@@ -1,0 +1,34 @@
+# GuetLinker public-source allowlist.
+# Everything is private/local unless explicitly allowed below.
+/*
+
+# Repository metadata and public project description
+!/.gitignore
+!/README.md
+!/README_EN.md
+!/pyproject.toml
+!/requirements.txt
+!/guetlinker.spec
+
+# Application source and automated tests
+!/src/
+!/src/**
+!/tests/
+!/tests/**
+
+# Never publish generated or credential-bearing files, even below allowlisted
+# source directories.
+**/__pycache__/
+*.py[cod]
+*.log
+*.ini
+*.db
+*.sqlite*
+**/.env
+**/.env.*
+**/*credential*
+**/*secret*
+*.key
+*.pem
+*.pfx
+*.p12
