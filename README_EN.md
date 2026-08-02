@@ -11,6 +11,12 @@ information from the campus self-service system.
 > endorsed by GUET Network Center or the vendor of Dr.COM. Make sure your use
 > complies with the rules of your network environment.
 
+## Download
+
+| Windows | macOS | Linux |
+|---|---|---|
+| [Download Windows x64](https://github.com/Sunsume/GuetLinker/releases/download/v1.0.0/GuetLinker-Windows-x64.exe) | - | - |
+
 ## Features
 
 - **Campus network login**: Authenticate through the GUET Dr.COM portal with a

@@ -8,6 +8,12 @@
 > 本项目是非官方开源客户端，与桂林电子科技大学网络中心及 Dr.COM 厂商无隶属或
 > 授权关系。使用前请确认符合所在网络的管理规定。
 
+## 下载
+
+| Windows | macOS | Linux |
+|---|---|---|
+| [下载 Windows x64](https://github.com/Sunsume/GuetLinker/releases/download/v1.0.0/GuetLinker-Windows-x64.exe) | - | - |
+
 ## 功能
 
 - **校园网连接**：填写学号、密码并选择运营商后，通过学校 Dr.COM 门户登录。
