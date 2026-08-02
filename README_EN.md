@@ -1,106 +1,57 @@
-# GuetLinker 🌐
+# GuetLinker
 
-[简体中文](README.md) | **English**
+[简体中文](README.md)
 
-A Windows desktop client for the Guilin University of Electronic Technology
-campus network. It provides Dr.COM authentication, live connection monitoring,
-optional automatic reconnection, and access to selected account and traffic
-information from the campus self-service system.
-
-> This is an unofficial open-source client. It is not affiliated with or
-> endorsed by GUET Network Center or the vendor of Dr.COM. Make sure your use
-> complies with the rules of your network environment.
-
-## Download
-
-| Windows | macOS | Linux |
-|---|---|---|
-| [Download Windows x64](https://github.com/Sunsume/GuetLinker/releases/download/v1.0.0/GuetLinker-Windows-x64.exe) | - | - |
+An unofficial Windows campus-network client for Guilin University of Electronic Technology. Vue 3 and TypeScript render the dark pixel-style interface, while Tauri 2 and Rust handle desktop integration, portal authentication, connectivity monitoring, and self-service access. No Python runtime is required.
 
 ## Features
 
-- **Campus network login**: Authenticate through the GUET Dr.COM portal with a
-  student ID, password, and ISP selection.
-- **Live status monitoring**: Detect the current session, base account, access
-  provider, IPv4 address, and IPv6 address.
-- **Optional auto-reconnect**: Retry authentication after a detected outage only
-  when the user enables this option.
-- **Dynamic ISP list**: Fetch and cache provider options from the portal while
-  preserving the user's previous selection.
-- **Self-service account**: Sign in to the separate management system through a
-  dedicated dialog, including CAPTCHA handling when required.
-- **Account and traffic data**: Show account status, recent/historical anomaly
-  information, and international/domestic upload and download traffic for a
-  selected date range.
-- **Windows desktop integration**: System tray, startup launch, minimized startup,
-  and single-instance enforcement.
+- GUET Dr.COM wireless and Ethernet login with verified logout
+- Portal-state monitoring, IPv4/IPv6 display, and automatic reconnect
+- Machine-bound encrypted credential storage
+- Self-service login, CAPTCHA, account status, and date-range traffic queries
+- Windows autostart, start minimized, system tray, and single-instance behavior
+- Responsive dark pixel-style interface
 
-## Account Boundaries
+## Structure
 
-GuetLinker uses two independent sessions:
-
-1. Credentials on the **Connection & Settings** page authenticate the Dr.COM
-   campus network session.
-2. Credentials on the **Account** page authenticate the campus self-service
-   management system.
-
-A successful self-service login does not mean that the campus network is online.
-The live result on the Status page is always the source of truth for connectivity.
-
-## Requirements
-
-- Windows 10 or Windows 11
-- Python 3.11+
-- A network environment that can reach the GUET campus portal
-
-## Installation and Usage
-
-```bash
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-python src/main.py
+```text
+GuetLinker/
+├─ src/                     Vue pages, state logic, and visual assets
+├─ src-tauri/
+│  ├─ src/                  Rust authentication, monitoring, config, and commands
+│  ├─ capabilities/         Tauri permissions
+│  └─ Cargo.toml            Rust dependencies
+├─ package.json             Frontend and development commands
+└─ README.md
 ```
 
-On first launch, enter the campus network credentials and select an ISP on the
-**Connection & Settings** page. Sign in separately on the **Account** page only
-when self-service account or traffic information is needed.
+## Development
 
-## Development and Testing
+Install Node.js, Rust, and the Windows Tauri prerequisites, then run from the repository root:
 
-```bash
-pip install -e .[dev]
-pytest -q
+```powershell
+npm install
+npm run tauri dev
 ```
 
-The project uses PySide6, httpx, BeautifulSoup4, and cryptography. Core network
-requests run in background workers to keep the Qt interface responsive.
+Frontend check:
 
-## Packaging
-
-```bash
-pyinstaller --noconfirm guetlinker.spec
+```powershell
+npm run build
 ```
 
-The executable is generated at `dist/GuetLinker.exe`. Build artifacts are not
-tracked in the source repository.
+Rust checks:
 
-## Privacy and Safety
+```powershell
+cd src-tauri
+cargo test --lib
+cargo clippy --all-targets --all-features -- -D warnings
+```
 
-- Campus network passwords are stored only on the local machine and encrypted
-  with Fernet.
-- Self-service passwords and CAPTCHA values are used only for the current session
-  and are never written into project files.
-- The repository excludes personal accounts, runtime logs, saved web pages,
-  binaries, and internal development-history documents.
-- The application asks for confirmation before disconnecting. Real disconnection
-  testing must be performed by the user.
-- Obtain binaries only from trusted sources and review the source when possible.
+No installer is generated for now. Run `npm run tauri build` only when a package is needed.
 
-## Scope
-
-The current protocol and page parsers target the GUET campus network. Portal
-updates may require corresponding compatibility changes.
+This project is not affiliated with or endorsed by the university network center or Dr.COM.
 
 ## License
 

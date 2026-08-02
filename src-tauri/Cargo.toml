@@ -1,0 +1,41 @@
+[package]
+name = "guetlinker-desktop"
+version = "1.0.0"
+description = "GuetLinker campus-network desktop client"
+authors = ["GuetLinker Team"]
+edition = "2021"
+
+[lib]
+name = "guetlinker_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+aes-gcm = "0.11"
+base64 = "0.22"
+chrono = "0.4"
+md-5 = "0.11"
+regex = "1"
+scraper = "0.27"
+sha2 = "0.10"
+thiserror = "2"
+url = "2"
+html-escape = "0.2"
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "cookies", "json", "form", "query", "charset"] }
+tokio = { version = "1", features = ["sync", "time"] }
+
+[target."cfg(windows)".dependencies]
+ipconfig = "0.3"
+tauri-plugin-autostart = "2.5.1"
+tauri-plugin-notification = "2.3.3"
+tauri-plugin-single-instance = "2.4.3"
+winreg = "0.55"
+
+[dev-dependencies]
+tempfile = "3"
