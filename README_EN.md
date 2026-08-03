@@ -2,10 +2,13 @@
 
 [简体中文](README.md) | **English**
 
-A Windows desktop client for the Guilin University of Electronic Technology
-campus network. It provides Dr.COM authentication, live connection monitoring,
-optional automatic reconnection, and access to selected account and traffic
-information from the campus self-service system.
+A cross-platform desktop client project for the Guilin University of Electronic
+Technology campus network. It provides Dr.COM authentication, live connection
+monitoring, optional automatic reconnection, and access to selected account and
+traffic information from the campus self-service system.
+
+The current `v1.0.0` release provides a Windows x64 build. macOS and Linux builds
+are on the development roadmap.
 
 > This is an unofficial open-source client. It is not affiliated with or
 > endorsed by GUET Network Center or the vendor of Dr.COM. Make sure your use
@@ -16,6 +19,9 @@ information from the campus self-service system.
 | Windows | macOS | Linux |
 |---|---|---|
 | [Download Windows x64](https://github.com/Sunsume/GuetLinker/releases/download/v1.0.0/GuetLinker-Windows-x64.exe) | - | - |
+
+`-` means that a build has not been released for that platform yet; it does not
+mean that the platform is outside the project's roadmap.
 
 ## Features
 
@@ -32,8 +38,9 @@ information from the campus self-service system.
 - **Account and traffic data**: Show account status, recent/historical anomaly
   information, and international/domestic upload and download traffic for a
   selected date range.
-- **Windows desktop integration**: System tray, startup launch, minimized startup,
-  and single-instance enforcement.
+- **Desktop integration**: A shared Qt interface with system tray, minimized
+  startup, and single-instance enforcement. Startup launch and packaging will be
+  adapted for each operating system.
 
 ## Account Boundaries
 
@@ -47,13 +54,17 @@ GuetLinker uses two independent sessions:
 A successful self-service login does not mean that the campus network is online.
 The live result on the Status page is always the source of truth for connectivity.
 
-## Requirements
+## Platform Status and Requirements
 
-- Windows 10 or Windows 11
+- Windows: A tested x64 release is currently available
+- macOS: Planned; no official build is available yet
+- Linux: Planned; no official build is available yet
 - Python 3.11+
 - A network environment that can reach the GUET campus portal
 
-## Installation and Usage
+## Running from Source
+
+The following workflow is currently verified on Windows:
 
 ```bash
 python -m venv .venv
@@ -65,6 +76,9 @@ python src/main.py
 On first launch, enter the campus network credentials and select an ISP on the
 **Connection & Settings** page. Sign in separately on the **Account** page only
 when self-service account or traffic information is needed.
+
+Platform-specific dependency, permission, and packaging instructions for macOS
+and Linux will be added after their ports are validated.
 
 ## Development and Testing
 
@@ -82,8 +96,9 @@ requests run in background workers to keep the Qt interface responsive.
 pyinstaller --noconfirm guetlinker.spec
 ```
 
-The executable is generated at `dist/GuetLinker.exe`. Build artifacts are not
-tracked in the source repository.
+The current command generates the Windows executable at `dist/GuetLinker.exe`.
+macOS and Linux will use their own packaging entry points. Build artifacts for
+all platforms remain outside the source repository.
 
 ## Privacy and Safety
 
@@ -99,8 +114,10 @@ tracked in the source repository.
 
 ## Scope
 
-The current protocol and page parsers target the GUET campus network. Portal
-updates may require corresponding compatibility changes.
+The current protocol and page parsers target the GUET campus network. The target
+platforms are Windows, macOS, and Linux, while `v1.0.0` has only completed Windows
+release validation. Portal and operating-system updates may require corresponding
+compatibility changes.
 
 ## License
 
