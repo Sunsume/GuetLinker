@@ -1,34 +1,27 @@
-# GuetLinker public-source allowlist.
-# Everything is private/local unless explicitly allowed below.
-/*
+# Dependencies and build output
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/schemas/
 
-# Repository metadata and public project description
-!/.gitignore
-!/README.md
-!/README_EN.md
-!/pyproject.toml
-!/requirements.txt
-!/guetlinker.spec
-
-# Application source and automated tests
-!/src/
-!/src/**
-!/tests/
-!/tests/**
-
-# Never publish generated or credential-bearing files, even below allowlisted
-# source directories.
-**/__pycache__/
-*.py[cod]
+# Local application data and secrets
 *.log
 *.ini
 *.db
 *.sqlite*
-**/.env
-**/.env.*
-**/*credential*
-**/*secret*
+design-qa.md
+.env
+.env.*
+*credential*
+*secret*
 *.key
 *.pem
 *.pfx
 *.p12
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+*.suo
+*.sw?

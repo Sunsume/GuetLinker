@@ -1,1 +1,0 @@
-"""GuetLinker UI modules."""

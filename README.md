@@ -1,11 +1,12 @@
-# GuetLinker 🌐
+# GuetLinker
 
 **简体中文** | [English](README_EN.md)
 
-面向桂林电子科技大学校园网的跨平台桌面客户端项目，提供 Dr.COM 登录、实时状态
-检测、可选自动重连，以及校园网自助服务账户与流量信息查询。
+面向桂林电子科技大学校园网的跨平台桌面客户端项目。当前源码使用 Vue 3 + TypeScript
+构建暗色像素风界面，并由 Tauri 2 + Rust 提供桌面能力、校园网认证、断线监测和
+自助服务访问，不需要 Python 运行环境。
 
-当前 `v1.0.0` 已提供 Windows x64 版本；macOS 和 Linux 版本在后续开发计划中。
+当前版本已在 Windows 上验证；macOS 和 Linux 版本在后续开发计划中。
 
 > 本项目是非官方开源客户端，与桂林电子科技大学网络中心及 Dr.COM 厂商无隶属或
 > 授权关系。使用前请确认符合所在网络的管理规定。
@@ -14,21 +15,19 @@
 
 | Windows | macOS | Linux |
 |---|---|---|
-| [下载 Windows x64](https://github.com/Sunsume/GuetLinker/releases/download/v1.0.0/GuetLinker-Windows-x64.exe) | - | - |
+| [下载 v1.0.0 Windows x64](https://github.com/Sunsume/GuetLinker/releases/download/v1.0.0/GuetLinker-Windows-x64.exe) | - | - |
 
-`-` 表示对应平台版本尚未发布，并非项目不支持该平台方向。
+`-` 表示对应平台版本尚未发布，并非项目不支持该平台方向。当前源码迁移后的安装包
+尚未发布，需要时可按下方开发说明从源码运行或构建。
 
 ## 功能
 
-- **校园网连接**：填写学号、密码并选择运营商后，通过学校 Dr.COM 门户登录。
-- **实时状态检测**：持续识别当前在线状态、基础账号、接入运营商、IPv4 和 IPv6。
-- **可选自动重连**：仅在用户开启后，检测到掉线时自动尝试重新认证。
-- **动态运营商列表**：从门户动态读取并缓存运营商选项，同时保留用户的历史选择。
-- **自助服务账户**：在独立弹窗中登录管理系统，并按需处理验证码。
-- **账户信息与流量**：显示账户状态、近期/历史异常信息，以及指定日期范围的
-  国际/国内上行和下行流量。
-- **桌面端体验**：统一使用 Qt 界面，并提供系统托盘、最小化启动和单实例运行；
-  各平台的开机自启与打包方案将分别适配。
+- GUET Dr.COM 无线 / 有线门户登录与安全注销
+- 门户状态识别、IPv4 / IPv6 显示与断线自动重连
+- 本机加密保存校园网凭据
+- 自助服务登录、验证码、账户状态与指定日期流量查询
+- Windows 开机启动、启动时最小化、系统托盘与应用单例
+- 可缩放的暗色像素风界面
 
 ## 账户边界
 
@@ -40,62 +39,57 @@ GuetLinker 使用两套彼此独立的会话：
 自助服务登录成功不代表校园网已经在线；实际网络状态始终以状态页的实时检测结果
 为准。
 
-## 平台状态与环境要求
+## 目录
 
-- Windows：当前已提供并验证 x64 发行版本
-- macOS：计划支持，暂未提供正式构建
-- Linux：计划支持，暂未提供正式构建
-- Python 3.11+
-- 可访问桂电校园网门户的网络环境
-
-## 从源码运行
-
-当前以下流程已在 Windows 上验证：
-
-```bash
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-python src/main.py
+```text
+GuetLinker/
+├─ src/                     Vue 页面、状态逻辑和视觉资源
+├─ src-tauri/
+│  ├─ src/                  Rust 认证、监测、配置与 Tauri 命令
+│  ├─ capabilities/         Tauri 权限
+│  └─ Cargo.toml            Rust 依赖
+├─ package.json             前端与开发命令
+└─ README.md
 ```
 
-首次运行后，请在“连接与设置”页填写校园网凭据并选择运营商。需要查看自助服务
-账户状态或流量时，再前往“账户”页单独登录。
+## 平台状态与环境要求
 
-macOS 和 Linux 的依赖、权限及打包说明会在对应平台适配完成后补充。
+- Windows：当前已验证
+- macOS：计划支持，暂未提供正式构建
+- Linux：计划支持，暂未提供正式构建
+- Node.js、Rust 和对应平台的 Tauri 系统依赖
+- 可访问桂电校园网门户的网络环境
 
 ## 开发与测试
 
-```bash
-pip install -e .[dev]
-pytest -q
+在仓库根目录安装依赖并启动开发版本：
+
+```powershell
+npm install
+npm run tauri dev
 ```
 
-项目使用 PySide6、httpx、BeautifulSoup4 和 cryptography。核心网络请求均在后台
-执行，避免阻塞 Qt 界面。
+检查前端：
 
-## 打包
-
-```bash
-pyinstaller --noconfirm guetlinker.spec
+```powershell
+npm run build
 ```
 
-当前命令生成 Windows 程序 `dist/GuetLinker.exe`。macOS 和 Linux 将分别维护对应的
-打包入口；所有构建产物均不纳入源码仓库。
+检查 Rust：
 
-## 隐私与安全
+```powershell
+cd src-tauri
+cargo test --lib
+cargo clippy --all-targets --all-features -- -D warnings
+```
 
-- 校园网密码仅保存在本机，并使用 Fernet 加密。
-- 自助服务密码和验证码只用于当前会话，不写入项目文件。
-- 仓库不包含个人账号、运行日志、离线网页样本、构建产物或开发历史文档。
-- 主动断开连接前会要求用户二次确认；真实断网测试应由使用者自行完成。
-- 请只从可信来源获取构建产物，并自行核对源码。
+当前不生成安装包；需要时再运行 `npm run tauri build`。
 
 ## 适用范围
 
 当前协议和页面解析针对桂林电子科技大学校园网环境。项目目标平台包括 Windows、
-macOS 和 Linux；其中 `v1.0.0` 仅完成 Windows 发行验证。学校门户或操作系统接口
-升级后，部分功能可能需要同步适配。
+macOS 和 Linux，但目前仅完成 Windows 验证。学校门户或操作系统接口升级后，部分
+功能可能需要同步适配。
 
 ## License
 
