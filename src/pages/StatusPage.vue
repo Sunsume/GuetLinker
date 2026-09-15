@@ -175,61 +175,79 @@ onUnmounted(() => {
 <template>
   <section class="page status-page">
     <article class="pixel-panel status-console">
-      <div class="status-overview">
-        <div class="status-heading">
-          <p>网络状态</p>
-          <h2>{{ statusTitle }}</h2>
+      <!-- 1. Hero row: orb + texts on left, connect/disconnect button on right -->
+      <div class="status-hero-row">
+        <div class="status-orb-group">
+          <div class="status-orb-mini" :class="{ 'status-orb-mini--offline': !snapshot.connected }">
+            <PixelIcon v-if="snapshot.connected" name="check" />
+            <PixelIcon v-else name="close" />
+          </div>
+          <div class="status-hero-texts">
+            <span class="status-prefix">NET STATUS // 当前状态</span>
+            <h2 class="status-title">{{ statusTitle }}</h2>
+          </div>
         </div>
 
-        <div class="status-orb" :class="{ 'status-orb--offline': !snapshot.connected }">
-          <PixelIcon v-if="snapshot.connected" name="check" />
-          <PixelIcon v-else name="close" />
+        <div class="status-hero-actions">
+          <button
+            v-if="!snapshot.connected"
+            class="pixel-button pixel-button--primary pixel-button--hero"
+            :disabled="busy && !connecting"
+            @click="handleConnectClick"
+          >
+            <PixelIcon v-if="connecting" class="spin" name="reload" />
+            <PixelIcon v-else name="link" />
+            {{ connecting ? "取消" : "连接" }}
+          </button>
+          <button
+            v-else
+            class="pixel-button pixel-button--danger pixel-button--hero"
+            :disabled="busy"
+            @click="emit('setConnection', false)"
+          >
+            <PixelIcon v-if="busy" class="spin" name="reload" />
+            <PixelIcon v-else name="power" />
+            断开
+          </button>
         </div>
       </div>
 
-      <dl class="network-details">
-        <div><PixelIcon name="account" /><dt>当前账号</dt><dd>{{ snapshot.account || "—" }}</dd></div>
-        <div><PixelIcon name="chart" /><dt>接入运营商</dt><dd>{{ snapshot.operator || "—" }}</dd></div>
-        <div><PixelIcon name="computer" /><dt>IPv4 地址</dt><dd>{{ snapshot.ipv4 || "—" }}</dd></div>
-        <div><PixelIcon name="clock" /><dt>上次检测</dt><dd>{{ snapshot.checkedAt }}</dd></div>
-      </dl>
+      <!-- 2. 4-column metadata grid -->
+      <div class="status-meta-grid">
+        <div class="meta-item">
+          <span class="meta-lbl">当前账号</span>
+          <span class="meta-val font-mono" :title="snapshot.account || '未登录'">{{ snapshot.account || "—" }}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-lbl">接入运营商</span>
+          <span class="meta-val" :title="snapshot.operator || '未选择'">{{ snapshot.operator || "—" }}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-lbl">IPv4 内网地址</span>
+          <span class="meta-val font-mono" :title="snapshot.ipv4 || '—'">{{ snapshot.ipv4 || "—" }}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-lbl">上次心跳检测</span>
+          <span class="meta-val font-mono">{{ snapshot.checkedAt || '—' }}</span>
+        </div>
+      </div>
+
       <p v-if="error" class="inline-error">{{ error }}</p>
 
-      <div class="actions-row">
+      <!-- 3. Subtools: diagnostics & speed test -->
+      <div class="status-subtools">
         <button
-          class="pixel-button pixel-button--primary"
-          :disabled="snapshot.connected || (busy && !connecting)"
-          @click="handleConnectClick"
-        >
-          <PixelIcon v-if="connecting" class="spin" name="reload" />
-          <PixelIcon v-else name="link" />
-          {{ connecting ? "取消连接" : "连接" }}
-        </button>
-        <button
-          class="pixel-button"
-          :class="{ 'pixel-button--primary': snapshot.connected }"
-          :disabled="busy || !snapshot.connected"
-          @click="emit('setConnection', false)"
-        >
-          <PixelIcon v-if="busy && snapshot.connected" class="spin" name="reload" />
-          <PixelIcon v-else name="power" />
-          断开
-        </button>
-      </div>
-
-      <div class="status-tools-row">
-        <button
-          class="pixel-button pixel-button--small"
+          class="pixel-subtool-btn"
           type="button"
           :disabled="diagnosing"
           @click="runDiagnostic"
         >
           <PixelIcon v-if="diagnosing" class="spin" name="reload" />
           <PixelIcon v-else name="computer" />
-          {{ diagnosing ? "正在体检…" : "一键网络体检" }}
+          {{ diagnosing ? "正在体检…" : "一键体检" }}
         </button>
         <button
-          class="pixel-button pixel-button--small"
+          class="pixel-subtool-btn"
           type="button"
           :disabled="probing"
           @click="probeQuality"
@@ -241,78 +259,81 @@ onUnmounted(() => {
       </div>
     </article>
 
-    <!-- Public & Proxy Egress Panel -->
+    <!-- Public & Proxy Egress Panel (Compact) -->
     <article class="pixel-panel egress-panel">
       <div class="egress-header">
         <div class="egress-title-row">
           <PixelIcon name="globe" />
           <h3>公网 / 代理出口检测</h3>
         </div>
-        <button
-          class="pixel-button pixel-button--small egress-refresh-btn"
-          type="button"
-          :disabled="loadingEgress"
-          @click="refreshEgressInfo"
-          title="重新探测当前对外公网 IP 及翻墙节点"
-        >
-          <PixelIcon v-if="loadingEgress" class="spin" name="reload" />
-          <PixelIcon v-else name="reload" />
-          {{ loadingEgress ? "探测中…" : "刷新出口" }}
-        </button>
-      </div>
-
-      <div v-if="egressInfo" class="egress-body">
-        <div class="egress-status-bar">
+        <div class="egress-header-right">
           <span
+            v-if="egressInfo"
             class="egress-tag"
             :class="egressInfo.isCernet ? 'egress-tag--danger' : (egressInfo.isProxyNode ? 'egress-tag--proxy' : 'egress-tag--direct')"
           >
             <span class="egress-dot"></span>
-            {{ egressInfo.isCernet ? '校园教育网出口 (高危·严查代理)' : (egressInfo.isProxyNode ? '代理翻墙节点 (已生效)' : '商业运营商出口 (安全直连)') }}
+            {{ egressInfo.isCernet ? '校园网出口(严查代理)' : (egressInfo.isProxyNode ? '代理节点(已生效)' : '商业运营商出口') }}
           </span>
-          <span class="egress-ip-pill">{{ egressInfo.ip }}</span>
-        </div>
-
-        <div class="egress-grid">
-          <div class="egress-grid-item">
-            <span class="egress-label">物理落地所在地</span>
-            <span class="egress-val">{{ egressInfo.country }} {{ egressInfo.region }} {{ egressInfo.city }}</span>
-          </div>
-          <div class="egress-grid-item">
-            <span class="egress-label">出口网络运营商 / 节点机房</span>
-            <span class="egress-val" :title="egressInfo.isp || egressInfo.org">{{ egressInfo.isp || egressInfo.org || '—' }}</span>
-          </div>
-        </div>
-
-        <!-- Warning if on CERNET -->
-        <div v-if="egressInfo.isCernet" class="egress-alert-box egress-alert-box--danger">
-          <p><strong>⚠️ 高危警示：</strong>检测到当前公网出口为学校教育网 (CERNET)。学校正在严厉稽查代理翻墙，<strong>严禁在此出口开启翻墙工具</strong>，以免被关联学号封禁！请在“连接与设置”中切换为【中国移动】并重新连接。</p>
-        </div>
-
-        <!-- Safe notice if on Proxy -->
-        <div v-else-if="egressInfo.isProxyNode" class="egress-alert-box egress-alert-box--proxy">
-          <p><strong>🚀 翻墙代理节点已生效：</strong>当前对外真实出口为海外/云服务器节点（{{ egressInfo.country }} {{ egressInfo.city }} · {{ egressInfo.isp }}），所有外网流量均已通过代理中转，未走校内出口。</p>
-        </div>
-
-        <!-- Notice if direct China Mobile -->
-        <div v-else class="egress-alert-box egress-alert-box--direct">
-          <p><strong>🟢 商业运营商直连：</strong>当前为国内运营商专线出口，未经过学校教育网行为审计系统，日常可安心上网。</p>
+          <button
+            class="pixel-button pixel-button--small egress-refresh-btn"
+            type="button"
+            :disabled="loadingEgress"
+            @click="refreshEgressInfo"
+            title="探测当前公网 IP 及翻墙节点"
+          >
+            <PixelIcon v-if="loadingEgress" class="spin" name="reload" />
+            <PixelIcon v-else name="reload" />
+            {{ loadingEgress ? "探测中…" : "刷新出口" }}
+          </button>
         </div>
       </div>
 
-      <div v-else-if="loadingEgress" class="egress-empty">
+      <div v-if="egressInfo" class="egress-compact-body">
+        <div class="egress-info-row">
+          <div class="egress-field">
+            <span class="egress-lbl">对外公网 IP</span>
+            <span class="egress-ip-highlight font-mono">{{ egressInfo.ip }}</span>
+          </div>
+          <div class="egress-field">
+            <span class="egress-lbl">物理落地地</span>
+            <span class="egress-txt">{{ egressInfo.country }} {{ egressInfo.city }}</span>
+          </div>
+          <div class="egress-field">
+            <span class="egress-lbl">出口网络商 / 代理机房</span>
+            <span class="egress-txt" :title="egressInfo.isp || egressInfo.org">{{ egressInfo.isp || egressInfo.org || '—' }}</span>
+          </div>
+        </div>
+
+        <div
+          class="egress-mini-tip"
+          :class="egressInfo.isCernet ? 'egress-mini-tip--danger' : (egressInfo.isProxyNode ? 'egress-mini-tip--proxy' : 'egress-mini-tip--direct')"
+        >
+          <template v-if="egressInfo.isCernet">
+            ⚠️ <strong>高危警示：</strong>当前为学校教育网出口(CERNET)，严禁在此开启代理翻墙工具，以防学号被查封！建议切为【中国移动】。
+          </template>
+          <template v-else-if="egressInfo.isProxyNode">
+            🚀 <strong>翻墙代理已接管：</strong>出口已中转至海外/云节点（{{ egressInfo.country }} {{ egressInfo.city }}），外网流量未经过校内审计。
+          </template>
+          <template v-else>
+            🟢 <strong>运营商专线：</strong>当前为国内运营商直连，未经过校内审计系统，可正常访问。
+          </template>
+        </div>
+      </div>
+
+      <div v-else-if="loadingEgress" class="egress-loading-compact">
         <PixelIcon class="spin" name="reload" />
         <span>正在精准探测当前对外公网 IP 及翻墙代理节点…</span>
       </div>
 
-      <div v-else class="egress-empty">
+      <div v-else class="egress-loading-compact">
         <PixelIcon name="close" />
-        <span>尚未获取公网出口信息（请在连接网络后点击右上角“刷新出口”）</span>
+        <span>未获取出口数据（连接网络后点击“刷新出口”）</span>
       </div>
     </article>
 
     <!-- Diagnostics Panel (Collapsible) -->
-    <article v-if="showDiagnostic && diagnosticReport" class="diagnostic-panel">
+    <article v-if="showDiagnostic && diagnosticReport" class="pixel-panel diagnostic-panel">
       <div class="diagnostic-header">
         <h3>网络体检报告</h3>
         <span
@@ -324,7 +345,7 @@ onUnmounted(() => {
       </div>
       <p class="diagnostic-summary">{{ diagnosticReport.summary }}</p>
 
-      <div class="diagnostic-steps">
+      <div class="diagnostic-steps-scroll">
         <div v-for="step in diagnosticReport.steps" :key="step.id" class="diagnostic-step">
           <div class="step-top">
             <span>{{ step.name }}</span>
@@ -339,7 +360,7 @@ onUnmounted(() => {
 
       <div class="diagnostic-actions">
         <button class="pixel-button pixel-button--small pixel-button--primary" type="button" @click="copyReport">
-          <PixelIcon name="save" />{{ copySuccess ? "✓ 报障单已复制到剪贴板！" : "复制报障诊断单" }}
+          <PixelIcon name="save" />{{ copySuccess ? "✓ 已复制报障单！" : "复制报障诊断单" }}
         </button>
         <button class="pixel-button pixel-button--small" type="button" @click="showDiagnostic = false">
           <PixelIcon name="close" />收起
@@ -347,21 +368,20 @@ onUnmounted(() => {
       </div>
     </article>
 
-    <!-- Realtime Network Quality & Waveform Panel -->
+    <!-- Realtime Network Quality & Waveform Panel (Compact) -->
     <article class="pixel-panel quality-panel">
       <div class="quality-header">
-        <h3>实时网络质量波形</h3>
-        <span class="waveform-meta">网关均值: {{ averageLatency > 0 ? averageLatency + 'ms' : '—' }}</span>
+        <h3>实时网络质量</h3>
+        <span class="waveform-meta-avg">
+          网关均值: <strong :class="averageLatency > 0 && averageLatency < 50 ? 'color-lime' : 'color-warn'">{{ averageLatency > 0 ? averageLatency + 'ms' : '—' }}</strong>
+        </span>
       </div>
 
-      <div class="node-grid">
-        <div v-for="n in nodes" :key="n.id" class="node-card">
-          <div>
-            <span class="node-name">{{ n.name }}</span>
-            <span class="node-target">{{ n.target }}</span>
-          </div>
+      <div class="node-compact-row">
+        <div v-for="n in nodes" :key="n.id" class="node-pill">
+          <span class="node-pill-name">{{ n.name }}</span>
           <span
-            class="node-latency"
+            class="node-pill-ms"
             :class="n.latencyMs === null ? 'node-latency--timeout' : (n.latencyMs < 30 ? 'node-latency--fast' : (n.latencyMs < 100 ? 'node-latency--medium' : 'node-latency--slow'))"
           >
             {{ n.latencyMs !== null ? n.latencyMs + 'ms' : '超时' }}
@@ -369,12 +389,8 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <div class="waveform-box">
-        <div class="waveform-meta">
-          <span>网关延迟实时采样 (最近 16 次)</span>
-          <span>采样率: 3s</span>
-        </div>
-        <div class="waveform-canvas">
+      <div class="waveform-box-compact">
+        <div class="waveform-canvas-compact">
           <div
             v-for="(val, idx) in latencyHistory"
             :key="idx"
@@ -383,10 +399,14 @@ onUnmounted(() => {
             <div
               class="wave-bar"
               :class="val === 0 ? 'wave-bar--timeout' : (val < 30 ? 'wave-bar--fast' : (val < 100 ? 'wave-bar--medium' : 'wave-bar--slow'))"
-              :style="{ height: Math.max(4, Math.min(68, val > 0 ? val * 1.5 : 68)) + 'px' }"
+              :style="{ height: Math.max(3, Math.min(30, val > 0 ? Math.round(val * 0.7) : 30)) + 'px' }"
               :title="val > 0 ? val + 'ms' : '超时/丢包'"
             ></div>
           </div>
+        </div>
+        <div class="waveform-caption-compact">
+          <span>网关延迟采样 (3s/次)</span>
+          <span>最近 {{ latencyHistory.length }} 次</span>
         </div>
       </div>
     </article>

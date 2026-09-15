@@ -213,7 +213,7 @@ npm run tauri build
 ```
 
 构建成功后，将在以下路径生成轻量的 NSIS 安装包与单文件便携版：
-- 安装包：`src-tauri/target/release/bundle/nsis/GuetLinker_2.3.0_x64-setup.exe`
+- 安装包：`src-tauri/target/release/bundle/nsis/GuetLinker_2.3.1_x64-setup.exe`
 - 便携版：`src-tauri/target/release/guetlinker-desktop.exe`
 
 ---
