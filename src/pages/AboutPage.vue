@@ -20,7 +20,7 @@ async function openRepository(): Promise<void> {
     <article class="pixel-panel about-panel">
       <img :src="brandMark" alt="" />
       <h2>GuetLinker</h2>
-      <span class="version-badge">v1.0.0</span>
+      <span class="version-badge">v2.0.0</span>
       <p>桂电校园网连接与自助服务客户端</p>
       <small>实时状态检测 · 可靠自动重连 · 隐私优先</small>
       <button class="pixel-button pixel-button--small" type="button" @click="openRepository">
