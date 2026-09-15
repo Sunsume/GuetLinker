@@ -1058,6 +1058,224 @@ select:focus-visible {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Quality & Latency Waveform Panel */
+.status-tools-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  max-width: 536px;
+  margin-top: 14px;
+}
+
+.quality-panel {
+  width: 100%;
+  max-width: 536px;
+  margin-top: 16px;
+  padding: 20px 22px;
+  box-sizing: border-box;
+}
+
+.quality-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.quality-header h3 {
+  margin: 0;
+  color: var(--cyan);
+  font-size: 14px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.quality-header h3::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background: var(--cyan);
+  box-shadow: 2px 2px 0 var(--shadow);
+}
+
+.node-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.node-card {
+  padding: 9px 12px;
+  background: #040c14;
+  border: 1px solid var(--frame-dark);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.node-name {
+  font-size: 11px;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.node-target {
+  font-size: 9px;
+  color: var(--muted);
+  display: block;
+}
+
+.node-latency {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 6px;
+  background: #081a26;
+  border: 1px solid currentColor;
+}
+
+.node-latency--fast { color: var(--lime); }
+.node-latency--medium { color: var(--yellow); }
+.node-latency--slow { color: #f97316; }
+.node-latency--timeout { color: var(--red); }
+
+.waveform-box {
+  background: #02070e;
+  border: 2px solid var(--frame-dark);
+  padding: 12px;
+  position: relative;
+  box-shadow: inset 2px 2px 0 #000;
+}
+
+.waveform-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.waveform-canvas {
+  width: 100%;
+  height: 72px;
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  padding-top: 8px;
+  border-bottom: 1px dashed var(--frame-dark);
+  box-sizing: border-box;
+}
+
+.wave-bar-col {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.wave-bar {
+  width: 100%;
+  min-height: 4px;
+  transition: height 0.2s steps(4, end);
+}
+
+.wave-bar--fast { background: var(--lime); box-shadow: 0 0 4px var(--lime); }
+.wave-bar--medium { background: var(--yellow); box-shadow: 0 0 4px var(--yellow); }
+.wave-bar--slow { background: #f97316; }
+.wave-bar--timeout { background: var(--red); box-shadow: 0 0 4px var(--red); }
+
+/* Diagnostics Panel */
+.diagnostic-panel {
+  width: 100%;
+  max-width: 536px;
+  margin-top: 16px;
+  padding: 18px 20px;
+  box-sizing: border-box;
+  background: #06121c;
+  border: 2px solid var(--frame);
+  box-shadow: 4px 4px 0 var(--shadow);
+}
+
+.diagnostic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.diagnostic-header h3 {
+  margin: 0;
+  color: var(--cyan);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.diagnostic-badge {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  border: 1px solid currentColor;
+}
+
+.diagnostic-badge--healthy { color: var(--lime); background: var(--lime-dark); }
+.diagnostic-badge--warning { color: var(--yellow); background: var(--yellow-dark); }
+.diagnostic-badge--error { color: var(--red); background: #3d0c11; }
+
+.diagnostic-summary {
+  font-size: 11px;
+  color: var(--text);
+  margin: 0 0 12px;
+}
+
+.diagnostic-steps {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 16px;
+}
+
+.diagnostic-step {
+  padding: 8px 12px;
+  background: #030a10;
+  border: 1px solid var(--frame-dark);
+  font-size: 11px;
+}
+
+.step-top {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.step-details {
+  color: var(--muted);
+  font-size: 10px;
+  margin: 0;
+}
+
+.step-suggestion {
+  color: var(--yellow);
+  font-size: 10px;
+  margin-top: 4px;
+}
+
+.diagnostic-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.copy-feedback {
+  color: var(--lime);
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

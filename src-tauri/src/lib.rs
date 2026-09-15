@@ -1,6 +1,7 @@
 mod auth;
 mod commands;
 mod config;
+mod diagnostics;
 mod error;
 mod monitor;
 mod network;
@@ -80,6 +81,8 @@ pub fn run() {
             commands::self_service_traffic,
             commands::reset_self_service,
             commands::check_app_update,
+            commands::get_network_quality,
+            commands::run_network_diagnostics,
         ])
         .run(tauri::generate_context!())
         .expect("error while running GuetLinker");

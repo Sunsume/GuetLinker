@@ -536,6 +536,28 @@ pub async fn check_app_update() -> Result<AppUpdateInfo, String> {
     })
 }
 
+#[tauri::command]
+pub async fn get_network_quality() -> Result<Vec<crate::diagnostics::NodePingResult>, String> {
+    Ok(crate::diagnostics::probe_network_quality().await)
+}
+
+#[tauri::command]
+pub async fn run_network_diagnostics(
+    state: State<'_, AppState>,
+) -> Result<crate::diagnostics::DiagnosticReport, String> {
+    let snapshot = state.monitor.lock().await.snapshot();
+    let saved_account = {
+        let config = state.config.lock().await;
+        config.credentials().map(|c| c.account)
+    };
+    Ok(crate::diagnostics::run_system_diagnostic(
+        &snapshot.ipv4,
+        snapshot.connected,
+        saved_account.as_deref(),
+    )
+    .await)
+}
+
 #[cfg(test)]
 mod tests {
     #[cfg(all(windows, debug_assertions))]

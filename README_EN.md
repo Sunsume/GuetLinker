@@ -69,6 +69,15 @@ The current version is thoroughly validated on Windows 10 / 11; macOS and Linux 
   - Real-time account status and anomaly warning inspection.
   - Custom date-range querying for **domestic and international** upstream, downstream, and combined traffic usage.
 
+- 📈 **Real-Time Network Quality & Latency Waveform**
+  - High-precision, microsecond-level async non-privileged TCP handshake timing for key endpoints: Campus Gateway (`10.0.1.5:80`), GUET Official Portal (`www.guet.edu.cn:443`), Public DNS (`223.5.5.5:53`), and Public WAN (`www.baidu.com:443`).
+  - Dynamic 16-bar retro pixel waveform rendering real-time network stability, latency jitter, and packet loss.
+
+- 🩺 **One-Click Network Health Check & Diagnostic Report**
+  - Comprehensive multi-tier automated diagnostics: Local adapter & IP allocation -> Campus Gateway reachability -> DNS resolution -> Public WAN route -> Local stored credentials integrity.
+  - Generates structured, color-coded diagnostic assessment cards with targeted troubleshooting advice.
+  - **1-Click Formatted Report Export**: Copies a clean ASCII diagnostic breakdown directly to the clipboard for instant submission to the student campus IT support group.
+
 - 🎮 **Immersive Retro Pixel-Art Desktop Experience**
   - Custom dark retro pixel art UI theme, bundling the open-source Fusion Pixel font and Pixelarticons.
   - Frameless pixel window frame (640×820 aspect ratio) with custom top drag area and quick minimization.
@@ -121,6 +130,7 @@ GuetLinker/
 │  │  ├─ auth.rs                    # Dr.COM protocol, login/logout, and ISP parsing
 │  │  ├─ commands.rs                # Tauri IPC commands callable from Vue
 │  │  ├─ config.rs                  # Configuration store & AES-256-GCM encryption
+│  │  ├─ diagnostics.rs             # Network latency probes & one-click diagnostics
 │  │  ├─ error.rs                   # Unified error definitions
 │  │  ├─ lib.rs                     # Tauri plugin initialization, tray, and single-instance
 │  │  ├─ main.rs                    # Desktop binary entry point
@@ -195,7 +205,7 @@ npm run tauri build
 ```
 
 Upon completion, an NSIS installer and a portable standalone executable will be generated at:
-- Installer: `src-tauri/target/release/bundle/nsis/GuetLinker_2.0.0_x64-setup.exe`
+- Installer: `src-tauri/target/release/bundle/nsis/GuetLinker_2.2.0_x64-setup.exe`
 - Portable: `src-tauri/target/release/guetlinker-desktop.exe`
 
 ---

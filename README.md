@@ -69,6 +69,15 @@
   - 实时查询账户基础状态、异常警告记录。
   - 自定义日期范围查询**国内/国际**的上行、下行流量明细与汇总。
 
+- 📈 **实时网络质量监测与延迟波形图**
+  - 基于 Rust 异步非特权 TCP 握手测量，微秒级精准获取关键节点延迟：校园网关（`10.0.1.5:80`）、桂电官网（`www.guet.edu.cn:443`）、公共 DNS（`223.5.5.5:53`）以及互联网出口（`www.baidu.com:443`）。
+  - 动态呈现 16 采样点复古像素延迟波形柱状图，网络抖动与波动一目了然。
+
+- 🩺 **一键网络体检与诊断报障报告**
+  - 全链路多点分级诊断：网卡与本地 IP 分配 -> 校园网关连通性 -> DNS 域名解析 -> 外网出口连通性 -> 本地账号凭据配置。
+  - 输出彩色结构化体检卡片，并针对不同故障级别给出排障指引建议。
+  - 支持**一键复制标准化排障报告（ASCII 报表）**，便于直接复制后向桂电网络报障群或网络中心提交工单。
+
 - 🎮 **沉浸式像素风桌面体验**
   - 专属定制的暗色复古像素风格 UI（集成开源 Fusion Pixel 像素字体与 Pixelarticons）。
   - 优雅的无边框像素窗口（640×820 黄金比例），支持顶部拖拽条及快捷最小化。
@@ -121,6 +130,7 @@ GuetLinker/
 │  │  ├─ auth.rs                    # Dr.COM 认证协议、登录注销与运营商解析
 │  │  ├─ commands.rs                # Tauri IPC 供前端调用的命令集
 │  │  ├─ config.rs                  # 本机配置存储与 AES-256-GCM 加解密
+│  │  ├─ diagnostics.rs             # 网络质量时序探测与一键网络体检诊断
 │  │  ├─ error.rs                   # 统一错误类型与处理
 │  │  ├─ lib.rs                     # Tauri 插件装配、系统托盘与单实例管理
 │  │  ├─ main.rs                    # 桌面端可执行程序入口
@@ -195,7 +205,7 @@ npm run tauri build
 ```
 
 构建成功后，将在以下路径生成轻量的 NSIS 安装包与单文件便携版：
-- 安装包：`src-tauri/target/release/bundle/nsis/GuetLinker_2.0.0_x64-setup.exe`
+- 安装包：`src-tauri/target/release/bundle/nsis/GuetLinker_2.2.0_x64-setup.exe`
 - 便携版：`src-tauri/target/release/guetlinker-desktop.exe`
 
 ---
