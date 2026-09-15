@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, type Component } from "vue";
+import { computed, onMounted, onUnmounted, ref, type Component } from "vue";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
 import brandMark from "./assets/guetlinker-mark-v2.png";
@@ -27,6 +29,35 @@ const pageComponents: Record<TabId, Component> = {
 };
 
 const activeTab = ref<TabId>("status");
+const hasUpdate = ref(false);
+let unlistenUpdateEvent: (() => void) | null = null;
+
+onMounted(async () => {
+  try {
+    unlistenUpdateEvent = await listen("open-check-update", () => {
+      activeTab.value = "about";
+    });
+  } catch {
+    // Ignore outside Tauri
+  }
+
+  setTimeout(async () => {
+    try {
+      const info = await invoke<{ hasUpdate: boolean }>("check_app_update");
+      if (info?.hasUpdate) {
+        hasUpdate.value = true;
+      }
+    } catch {
+      // Ignore background network check errors
+    }
+  }, 3000);
+});
+
+onUnmounted(() => {
+  if (unlistenUpdateEvent) {
+    unlistenUpdateEvent();
+  }
+});
 const { busy, connecting, error, cancelConnection, setConnection, snapshot } = useNetwork();
 const activePage = computed(function resolveActivePage(): Component {
   return pageComponents[activeTab.value];
@@ -98,6 +129,7 @@ async function startWindowDrag(): Promise<void> {
       >
         <PixelIcon :name="tab.icon" />
         <span>{{ tab.label }}</span>
+        <span v-if="tab.id === 'about' && hasUpdate" class="nav-update-dot" title="有新版本可用"></span>
       </button>
     </nav>
 

@@ -13,7 +13,7 @@ use std::time::{Duration, Instant, SystemTime};
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Manager,
+    Emitter, Manager,
 };
 
 const TRAY_ID: &str = "main-tray";
@@ -79,9 +79,25 @@ pub fn run() {
             commands::self_service_account_overview,
             commands::self_service_traffic,
             commands::reset_self_service,
+            commands::check_app_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running GuetLinker");
+}
+
+const TRAY_CONNECTED_RGBA: &[u8; 4096] = include_bytes!("../icons/tray-connected.rgba");
+const TRAY_DISCONNECTED_RGBA: &[u8; 4096] = include_bytes!("../icons/tray-disconnected.rgba");
+const TRAY_RECONNECTING_RGBA: &[u8; 4096] = include_bytes!("../icons/tray-reconnecting.rgba");
+const TRAY_UNKNOWN_RGBA: &[u8; 4096] = include_bytes!("../icons/tray-unknown.rgba");
+
+fn get_tray_icon(status: monitor::NetworkStatus) -> tauri::image::Image<'static> {
+    let bytes: &'static [u8] = match status {
+        monitor::NetworkStatus::Connected => TRAY_CONNECTED_RGBA,
+        monitor::NetworkStatus::Disconnected => TRAY_DISCONNECTED_RGBA,
+        monitor::NetworkStatus::Reconnecting => TRAY_RECONNECTING_RGBA,
+        monitor::NetworkStatus::Unknown => TRAY_UNKNOWN_RGBA,
+    };
+    tauri::image::Image::new(bytes, 32, 32)
 }
 
 fn setup_tray(app: &mut tauri::App) -> tauri::Result<()> {
@@ -89,8 +105,10 @@ fn setup_tray(app: &mut tauri::App) -> tauri::Result<()> {
     let check = MenuItem::with_id(app, "check", "立即检测", true, None::<&str>)?;
     let connect = MenuItem::with_id(app, "connect", "连接", true, None::<&str>)?;
     let disconnect = MenuItem::with_id(app, "disconnect", "断开", true, None::<&str>)?;
+    let update = MenuItem::with_id(app, "update", "检查更新…", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
     let separator_before_actions = PredefinedMenuItem::separator(app)?;
+    let separator_before_update = PredefinedMenuItem::separator(app)?;
     let separator_before_quit = PredefinedMenuItem::separator(app)?;
     let menu = Menu::with_items(
         app,
@@ -100,12 +118,15 @@ fn setup_tray(app: &mut tauri::App) -> tauri::Result<()> {
             &check,
             &connect,
             &disconnect,
+            &separator_before_update,
+            &update,
             &separator_before_quit,
             &quit,
         ],
     )?;
-    let mut tray = TrayIconBuilder::with_id(TRAY_ID)
+    let tray = TrayIconBuilder::with_id(TRAY_ID)
         .tooltip("GuetLinker")
+        .icon(get_tray_icon(monitor::NetworkStatus::Unknown))
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
@@ -113,6 +134,10 @@ fn setup_tray(app: &mut tauri::App) -> tauri::Result<()> {
             "check" => run_tray_action(app, TrayAction::Check),
             "connect" => run_tray_action(app, TrayAction::Connect),
             "disconnect" => run_tray_action(app, TrayAction::Disconnect),
+            "update" => {
+                show_main_window(app);
+                let _ = app.emit("open-check-update", ());
+            }
             "quit" => app.exit(0),
             _ => {}
         })
@@ -126,9 +151,6 @@ fn setup_tray(app: &mut tauri::App) -> tauri::Result<()> {
                 show_main_window(tray.app_handle());
             }
         });
-    if let Some(icon) = app.default_window_icon() {
-        tray = tray.icon(icon.clone());
-    }
     tray.build(app)?;
     Ok(())
 }
@@ -192,10 +214,10 @@ async fn publish_network_result(
         Ok(snapshot) => snapshot,
         Err(_) => state.monitor.lock().await.snapshot(),
     };
-    update_tray_tooltip(app, &snapshot);
+    update_tray(app, &snapshot);
 }
 
-fn update_tray_tooltip(app: &tauri::AppHandle, snapshot: &monitor::NetworkSnapshot) {
+fn update_tray(app: &tauri::AppHandle, snapshot: &monitor::NetworkSnapshot) {
     let status = match snapshot.status {
         monitor::NetworkStatus::Connected if !snapshot.account.is_empty() => "校园网已登录",
         monitor::NetworkStatus::Connected => "网络已连接",
@@ -205,6 +227,7 @@ fn update_tray_tooltip(app: &tauri::AppHandle, snapshot: &monitor::NetworkSnapsh
     };
     if let Some(tray) = app.tray_by_id(TRAY_ID) {
         let _ = tray.set_tooltip(Some(format!("GuetLinker — {status}")));
+        let _ = tray.set_icon(Some(get_tray_icon(snapshot.status)));
     }
 }
 

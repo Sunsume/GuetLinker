@@ -1,6 +1,6 @@
 use std::sync::atomic::Ordering;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, State};
 
 use crate::{
@@ -423,17 +423,145 @@ async fn disconnect(state: &AppState, portal_url: &str) -> Result<NetworkSnapsho
     Ok(monitor.snapshot())
 }
 
-#[cfg(all(test, windows, debug_assertions))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppUpdateInfo {
+    pub has_update: bool,
+    pub current_version: String,
+    pub latest_version: String,
+    pub release_name: String,
+    pub release_notes: String,
+    pub release_url: String,
+    pub portable_download_url: Option<String>,
+    pub setup_download_url: Option<String>,
+    pub published_at: String,
+}
+
+#[derive(Deserialize)]
+struct GitHubReleaseAsset {
+    name: String,
+    browser_download_url: String,
+}
+
+#[derive(Deserialize)]
+struct GitHubReleaseResponse {
+    tag_name: String,
+    name: Option<String>,
+    body: Option<String>,
+    html_url: String,
+    published_at: Option<String>,
+    assets: Option<Vec<GitHubReleaseAsset>>,
+}
+
+fn is_newer_version(latest: &str, current: &str) -> bool {
+    let parse_parts = |v: &str| -> Vec<u64> {
+        let clean = v.trim().trim_start_matches(['v', 'V']);
+        clean
+            .split('.')
+            .filter_map(|part| {
+                let num_str: String = part.chars().take_while(|c| c.is_ascii_digit()).collect();
+                num_str.parse::<u64>().ok()
+            })
+            .collect()
+    };
+
+    let latest_parts = parse_parts(latest);
+    let current_parts = parse_parts(current);
+
+    for (l, c) in latest_parts.iter().zip(current_parts.iter()) {
+        if l > c {
+            return true;
+        }
+        if l < c {
+            return false;
+        }
+    }
+    latest_parts.len() > current_parts.len()
+}
+
+#[tauri::command]
+pub async fn check_app_update() -> Result<AppUpdateInfo, String> {
+    let current_version = env!("CARGO_PKG_VERSION").to_string();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(8))
+        .build()
+        .map_err(|e| format!("创建 HTTP 客户端失败: {e}"))?;
+
+    let response = client
+        .get("https://api.github.com/repos/Sunsume/GuetLinker/releases/latest")
+        .header("User-Agent", "GuetLinker-Desktop")
+        .header("Accept", "application/vnd.github.v3+json")
+        .send()
+        .await
+        .map_err(|e| format!("请求 GitHub Release 接口失败: {e}"))?;
+
+    if !response.status().is_success() {
+        return Err(format!("GitHub Release 接口响应异常状态码: {}", response.status()));
+    }
+
+    let release: GitHubReleaseResponse = response
+        .json()
+        .await
+        .map_err(|e| format!("解析 Release 数据失败: {e}"))?;
+
+    let latest_version = release.tag_name.clone();
+    let has_update = is_newer_version(&latest_version, &current_version);
+
+    let mut portable_download_url = None;
+    let mut setup_download_url = None;
+
+    if let Some(assets) = release.assets {
+        for asset in assets {
+            let lower_name = asset.name.to_lowercase();
+            if lower_name.contains("portable") && lower_name.ends_with(".exe") {
+                portable_download_url = Some(asset.browser_download_url);
+            } else if (lower_name.contains("setup") || lower_name.ends_with("-setup.exe"))
+                && lower_name.ends_with(".exe")
+            {
+                setup_download_url = Some(asset.browser_download_url);
+            }
+        }
+    }
+
+    Ok(AppUpdateInfo {
+        has_update,
+        current_version,
+        latest_version,
+        release_name: release.name.unwrap_or_default(),
+        release_notes: release.body.unwrap_or_default(),
+        release_url: release.html_url,
+        portable_download_url,
+        setup_download_url,
+        published_at: release.published_at.unwrap_or_default(),
+    })
+}
+
+#[cfg(test)]
 mod tests {
+    #[cfg(all(windows, debug_assertions))]
     use std::path::Path;
 
+    #[cfg(all(windows, debug_assertions))]
     use super::release_executable_for;
 
+    #[cfg(all(windows, debug_assertions))]
     #[test]
     fn development_autostart_targets_release_executable() {
         let current = Path::new(r"C:\project\target\debug\guetlinker-desktop.exe");
         let expected = Path::new(r"C:\project\target\release\guetlinker-desktop.exe");
 
         assert_eq!(release_executable_for(current).unwrap(), expected);
+    }
+
+    #[test]
+    fn test_is_newer_version() {
+        use super::is_newer_version;
+        assert!(is_newer_version("v2.1.1", "2.1.0"));
+        assert!(is_newer_version("2.2.0", "2.1.0"));
+        assert!(is_newer_version("3.0.0", "2.1.0"));
+        assert!(!is_newer_version("2.1.0", "2.1.0"));
+        assert!(!is_newer_version("v2.1.0", "2.1.0"));
+        assert!(!is_newer_version("2.0.1", "2.1.0"));
+        assert!(!is_newer_version("v1.0.0", "2.1.0"));
     }
 }

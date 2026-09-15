@@ -72,7 +72,8 @@ The current version is thoroughly validated on Windows 10 / 11; macOS and Linux 
 - 🎮 **Immersive Retro Pixel-Art Desktop Experience**
   - Custom dark retro pixel art UI theme, bundling the open-source Fusion Pixel font and Pixelarticons.
   - Frameless pixel window frame (640×820 aspect ratio) with custom top drag area and quick minimization.
-  - **System Tray**: Persistent notification area icon with right-click status check, quick connect/disconnect, and exit.
+  - **Dynamic System Tray Status**: Persistent notification area icon reflecting live status with dynamic colors (🟢 Online / 🔴 Disconnected / 🟡 Reconnecting) and quick right-click actions including update checks.
+  - **In-App Update Checking**: Background checking on launch, plus on-demand checks from the About page and tray menu with release notes and direct download links for both portable and installer packages.
   - **Native Notifications**: Desktop toast popups for reconnect, login, or network failure (with quiet mode support).
   - **Launch Preferences**: Windows autostart on boot and start-minimized to system tray.
   - **Single-Instance Enforcement**: Prevents redundant instances; launching again automatically reveals and focuses the existing window.
