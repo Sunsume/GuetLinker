@@ -340,8 +340,8 @@ select:focus-visible {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 10px 0 20px;
+  gap: 12px;
+  padding: 12px 0 20px;
   overflow-x: hidden;
   overflow-y: auto;
 }
@@ -350,8 +350,8 @@ select:focus-visible {
 .egress-panel,
 .quality-panel,
 .diagnostic-panel {
-  width: calc(100% - 16px);
-  max-width: 560px;
+  width: calc(100% - 24px);
+  max-width: 580px;
   margin: 0 auto;
   box-sizing: border-box;
 }
@@ -360,7 +360,7 @@ select:focus-visible {
   display: flex;
   flex-direction: column;
   min-height: auto;
-  padding: 14px 18px 12px;
+  padding: 16px 20px 14px;
   position: relative;
   overflow: hidden;
 }
@@ -368,10 +368,10 @@ select:focus-visible {
 .status-console::after {
   content: "NET://GUET_LINK";
   position: absolute;
-  top: 10px;
-  right: 14px;
+  top: 12px;
+  right: 18px;
   color: #2f7188;
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 1px;
 }
 
@@ -380,21 +380,21 @@ select:focus-visible {
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .status-orb-group {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 .status-orb-mini {
   position: relative;
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: 50px;
+  height: 50px;
   clip-path: var(--pixel-cut);
   color: var(--lime);
   background: var(--lime);
@@ -414,8 +414,8 @@ select:focus-visible {
 .status-orb-mini .pixel-icon {
   position: relative;
   z-index: 1;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
 }
 
 .status-orb-mini--offline {
@@ -442,10 +442,10 @@ select:focus-visible {
 }
 
 .status-title {
-  margin: 2px 0 0;
+  margin: 3px 0 0;
   color: #f0f5ed;
-  font-size: 20px;
-  line-height: 1.1;
+  font-size: 22px;
+  line-height: 1.15;
   font-weight: 800;
   text-shadow: 2px 2px 0 #203e4d;
 }
@@ -456,8 +456,8 @@ select:focus-visible {
 }
 
 .pixel-button--hero {
-  min-height: 40px;
-  padding: 0 18px;
+  min-height: 42px;
+  padding: 0 20px;
   font-size: 14px;
   gap: 8px;
 }
@@ -486,40 +486,48 @@ select:focus-visible {
 
 .status-meta-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 18px;
   width: 100%;
   background: #030c14;
-  padding: 8px 10px;
+  padding: 12px 16px;
   border: 1px solid var(--frame-dark);
 }
 
 .meta-item {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   overflow: hidden;
 }
 
-.meta-item .pixel-icon {
+.meta-lbl-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.meta-lbl-row .pixel-icon {
   width: 14px;
   height: 14px;
   color: var(--cyan);
-  margin-bottom: 2px;
+  flex-shrink: 0;
 }
 
 .meta-lbl {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
+  font-weight: 700;
 }
 
 .meta-val {
-  font-size: 11px;
-  color: #eaf3f5;
-  font-weight: 700;
+  font-size: 13px;
+  color: #f0f5ed;
+  font-weight: 800;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  padding-left: 20px;
 }
 
 .font-mono {
@@ -528,9 +536,9 @@ select:focus-visible {
 
 .status-subtools {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
-  margin-top: 10px;
+  margin-top: 12px;
 }
 
 .pixel-subtool-btn {
@@ -538,10 +546,10 @@ select:focus-visible {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  height: 30px;
-  padding: 0 10px;
-  font-size: 11px;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px;
+  font-size: 12px;
   font-weight: 700;
   color: #9bc3d4;
   background: #071926;
@@ -1269,32 +1277,33 @@ select:focus-visible {
 .egress-compact-body {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .egress-info-row {
   display: grid;
-  grid-template-columns: 1.1fr 1fr 1fr;
-  gap: 6px;
+  grid-template-columns: 1.2fr 1.8fr;
+  gap: 12px;
   background: #030a10;
-  padding: 6px 10px;
+  padding: 10px 14px;
   border: 1px solid var(--frame-dark);
 }
 
 .egress-field {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 3px;
   overflow: hidden;
 }
 
 .egress-lbl {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--muted);
+  font-weight: 700;
 }
 
 .egress-txt {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text);
   font-weight: 700;
   white-space: nowrap;
@@ -1303,16 +1312,16 @@ select:focus-visible {
 }
 
 .egress-ip-highlight {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--cyan);
   font-weight: 800;
   letter-spacing: 0.5px;
 }
 
 .egress-mini-tip {
-  padding: 4px 8px;
-  font-size: 10px;
-  line-height: 1.4;
+  padding: 8px 12px;
+  font-size: 11px;
+  line-height: 1.5;
   border: 1px solid currentColor;
 }
 
@@ -1352,7 +1361,7 @@ select:focus-visible {
 
 /* ================= Quality & Latency Waveform Panel ================= */
 .quality-panel {
-  padding: 10px 14px 10px;
+  padding: 16px 20px;
   box-sizing: border-box;
 }
 
@@ -1360,13 +1369,13 @@ select:focus-visible {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .quality-header h3 {
   margin: 0;
   color: var(--cyan);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   display: flex;
   align-items: center;
@@ -1382,7 +1391,7 @@ select:focus-visible {
 }
 
 .waveform-meta-avg {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
 }
 
@@ -1396,28 +1405,28 @@ select:focus-visible {
 .node-compact-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-  margin-bottom: 8px;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
 .node-pill {
   background: #030c14;
   border: 1px solid var(--frame-dark);
-  padding: 4px 6px;
+  padding: 6px 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1px;
+  gap: 3px;
 }
 
 .node-pill-name {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--muted);
   white-space: nowrap;
 }
 
 .node-pill-ms {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   font-family: var(--font-mono, monospace);
   line-height: 1.2;
@@ -1431,16 +1440,16 @@ select:focus-visible {
 .waveform-box-compact {
   background: #02070e;
   border: 1px solid var(--frame-dark);
-  padding: 6px 10px 4px;
+  padding: 8px 12px 6px;
 }
 
 .waveform-canvas-compact {
-  height: 34px;
+  height: 48px;
   display: flex;
   align-items: flex-end;
-  gap: 4px;
+  gap: 5px;
   border-bottom: 1px dashed #143545;
-  padding-bottom: 2px;
+  padding-bottom: 3px;
   box-sizing: border-box;
 }
 
@@ -1467,9 +1476,9 @@ select:focus-visible {
 .waveform-caption-compact {
   display: flex;
   justify-content: space-between;
-  font-size: 9px;
+  font-size: 10px;
   color: var(--muted);
-  margin-top: 3px;
+  margin-top: 4px;
 }
 
 /* ================= Diagnostics Panel (Collapsible) ================= */

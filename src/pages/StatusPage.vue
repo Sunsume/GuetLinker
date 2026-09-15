@@ -150,6 +150,41 @@ async function refreshEgressInfo(): Promise<void> {
   }
 }
 
+// ---------------- Saved Credentials Fallback ----------------
+const savedStudentId = ref("");
+const savedOperator = ref("");
+
+async function loadSavedCredentials(): Promise<void> {
+  try {
+    const settings = await invoke<{ studentId: string; operator: string }>("get_settings");
+    if (settings) {
+      savedStudentId.value = settings.studentId || "";
+      savedOperator.value = settings.operator || "";
+    }
+  } catch {
+    // Ignore error
+  }
+}
+
+const displayAccount = computed(() => {
+  if (props.snapshot.account && props.snapshot.account !== "—" && props.snapshot.account !== "") {
+    return props.snapshot.account;
+  }
+  return savedStudentId.value || "—";
+});
+
+const displayOperator = computed(() => {
+  if (
+    props.snapshot.operator &&
+    props.snapshot.operator !== "—" &&
+    props.snapshot.operator !== "" &&
+    props.snapshot.operator !== "未知运营商"
+  ) {
+    return props.snapshot.operator;
+  }
+  return savedOperator.value || "—";
+});
+
 watch(
   () => props.snapshot.connected,
   (connected) => {
@@ -163,6 +198,7 @@ onMounted(() => {
   probeQuality();
   probeIntervalId = window.setInterval(probeQuality, 3000);
   refreshEgressInfo();
+  loadSavedCredentials();
 });
 
 onUnmounted(() => {
@@ -183,7 +219,7 @@ onUnmounted(() => {
             <PixelIcon v-else name="close" />
           </div>
           <div class="status-hero-texts">
-            <span class="status-prefix">NET STATUS // 当前状态</span>
+            <span class="status-prefix">NET STATUS // 校园网状态</span>
             <h2 class="status-title">{{ statusTitle }}</h2>
           </div>
         </div>
@@ -212,22 +248,34 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- 2. 4-column metadata grid -->
+      <!-- 2. Spacious 2x2 metadata grid -->
       <div class="status-meta-grid">
         <div class="meta-item">
-          <span class="meta-lbl">当前账号</span>
-          <span class="meta-val font-mono" :title="snapshot.account || '未登录'">{{ snapshot.account || "—" }}</span>
+          <div class="meta-lbl-row">
+            <PixelIcon name="account" />
+            <span class="meta-lbl">当前账号</span>
+          </div>
+          <span class="meta-val font-mono" :title="displayAccount">{{ displayAccount }}</span>
         </div>
         <div class="meta-item">
-          <span class="meta-lbl">接入运营商</span>
-          <span class="meta-val" :title="snapshot.operator || '未选择'">{{ snapshot.operator || "—" }}</span>
+          <div class="meta-lbl-row">
+            <PixelIcon name="chart" />
+            <span class="meta-lbl">接入运营商</span>
+          </div>
+          <span class="meta-val" :title="displayOperator">{{ displayOperator }}</span>
         </div>
         <div class="meta-item">
-          <span class="meta-lbl">IPv4 内网地址</span>
+          <div class="meta-lbl-row">
+            <PixelIcon name="computer" />
+            <span class="meta-lbl">IPv4 内网地址</span>
+          </div>
           <span class="meta-val font-mono" :title="snapshot.ipv4 || '—'">{{ snapshot.ipv4 || "—" }}</span>
         </div>
         <div class="meta-item">
-          <span class="meta-lbl">上次心跳检测</span>
+          <div class="meta-lbl-row">
+            <PixelIcon name="clock" />
+            <span class="meta-lbl">心跳检测</span>
+          </div>
           <span class="meta-val font-mono">{{ snapshot.checkedAt || '—' }}</span>
         </div>
       </div>
@@ -259,7 +307,7 @@ onUnmounted(() => {
       </div>
     </article>
 
-    <!-- Public & Proxy Egress Panel (Compact) -->
+    <!-- Public & Proxy Egress Panel (Spacious) -->
     <article class="pixel-panel egress-panel">
       <div class="egress-header">
         <div class="egress-title-row">
@@ -296,12 +344,10 @@ onUnmounted(() => {
             <span class="egress-ip-highlight font-mono">{{ egressInfo.ip }}</span>
           </div>
           <div class="egress-field">
-            <span class="egress-lbl">物理落地地</span>
-            <span class="egress-txt">{{ egressInfo.country }} {{ egressInfo.city }}</span>
-          </div>
-          <div class="egress-field">
-            <span class="egress-lbl">出口网络商 / 代理机房</span>
-            <span class="egress-txt" :title="egressInfo.isp || egressInfo.org">{{ egressInfo.isp || egressInfo.org || '—' }}</span>
+            <span class="egress-lbl">物理落地 / 节点机房</span>
+            <span class="egress-txt" :title="`${egressInfo.country} ${egressInfo.city} · ${egressInfo.isp || egressInfo.org || ''}`">
+              {{ egressInfo.country }} {{ egressInfo.city }} · {{ egressInfo.isp || egressInfo.org || '—' }}
+            </span>
           </div>
         </div>
 
@@ -399,7 +445,7 @@ onUnmounted(() => {
             <div
               class="wave-bar"
               :class="val === 0 ? 'wave-bar--timeout' : (val < 30 ? 'wave-bar--fast' : (val < 100 ? 'wave-bar--medium' : 'wave-bar--slow'))"
-              :style="{ height: Math.max(3, Math.min(30, val > 0 ? Math.round(val * 0.7) : 30)) + 'px' }"
+              :style="{ height: Math.max(4, Math.min(44, val > 0 ? Math.round(val * 1.0) : 44)) + 'px' }"
               :title="val > 0 ? val + 'ms' : '超时/丢包'"
             ></div>
           </div>

@@ -19,9 +19,27 @@ pub struct SaveSettingsResult {
     notification_error: String,
 }
 
+async fn enrich_snapshot_with_config(snapshot: &mut NetworkSnapshot, state: &AppState) {
+    if snapshot.connected {
+        let config = state.config.lock().await;
+        let settings = config.settings();
+        if (snapshot.account.is_empty() || snapshot.account == "—") && !settings.student_id.is_empty() {
+            snapshot.account = settings.student_id;
+        }
+        if (snapshot.operator.is_empty() || snapshot.operator == "—" || snapshot.operator == "未知运营商") && !settings.operator.is_empty() {
+            snapshot.operator = settings.operator;
+        }
+        if snapshot.ipv4.is_empty() || snapshot.ipv4 == "—" {
+            snapshot.ipv4 = crate::network::find_local_ipv4();
+        }
+    }
+}
+
 #[tauri::command]
 pub async fn get_network_snapshot(state: State<'_, AppState>) -> Result<NetworkSnapshot, String> {
-    Ok(state.monitor.lock().await.snapshot())
+    let mut snapshot = state.monitor.lock().await.snapshot();
+    enrich_snapshot_with_config(&mut snapshot, state.inner()).await;
+    Ok(snapshot)
 }
 
 pub async fn refresh_network(state: &AppState, app: &AppHandle) -> Result<NetworkSnapshot, String> {
@@ -42,11 +60,12 @@ pub async fn poll_network(
             config.credentials(),
         )
     };
-    let (snapshot, portal_online) = {
+    let (mut snapshot, portal_online) = {
         let mut monitor = state.monitor.lock().await;
         let snapshot = monitor.check(&portal_url, include_external).await;
         (snapshot, monitor.portal_session().is_online())
     };
+    enrich_snapshot_with_config(&mut snapshot, state).await;
     if portal_online {
         state.resume_auto_reconnect();
     }
@@ -404,7 +423,10 @@ async fn apply_login_result(
             .portal_session
             .ok_or_else(|| AppError::Protocol("门户未返回已验证的在线会话".into()).to_string())?;
         monitor.accept_verified_session(session);
-        Ok(monitor.snapshot())
+        let mut snapshot = monitor.snapshot();
+        drop(monitor);
+        enrich_snapshot_with_config(&mut snapshot, state).await;
+        Ok(snapshot)
     } else {
         monitor.cancel_reconnect();
         Err(result.message)

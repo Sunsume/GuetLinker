@@ -6,7 +6,7 @@ use serde::Serialize;
 
 use crate::{
     error::AppResult,
-    network::find_local_ipv6,
+    network::{find_local_ipv4, find_local_ipv6},
     portal::{parse_portal_page, PortalPageState, PortalSession},
 };
 
@@ -39,13 +39,21 @@ pub struct NetworkSnapshot {
 
 impl NetworkSnapshot {
     fn new(status: NetworkStatus, session: &PortalSession) -> Self {
+        let mut ipv4 = session.ipv4.clone();
+        if ipv4.is_empty() && status == NetworkStatus::Connected {
+            ipv4 = find_local_ipv4();
+        }
+        let mut ipv6 = session.ipv6.clone();
+        if ipv6.is_empty() && status == NetworkStatus::Connected && !ipv4.is_empty() {
+            ipv6 = find_local_ipv6(&ipv4);
+        }
         Self {
             connected: status == NetworkStatus::Connected,
             status,
             account: session.account_id(),
             operator: session.operator_name(),
-            ipv4: session.ipv4.clone(),
-            ipv6: session.ipv6.clone(),
+            ipv4,
+            ipv6,
             checked_at: Local::now().format("%H:%M:%S").to_string(),
         }
     }
@@ -158,14 +166,34 @@ impl NetworkMonitor {
     }
 
     fn apply_probe_result(&mut self, result: ProbeResult) {
-        self.portal_session = result.portal_session;
-        if self.portal_session.is_online() || result.external_reachable == Some(true) {
+        if result.portal_session.is_online() {
+            self.portal_session = result.portal_session;
             self.consecutive_failures = 0;
             self.reconnect_in_progress = false;
             self.status = NetworkStatus::Connected;
             return;
         }
 
+        if result.external_reachable == Some(true) {
+            self.consecutive_failures = 0;
+            self.reconnect_in_progress = false;
+            self.status = NetworkStatus::Connected;
+            if !result.portal_session.user_id.is_empty() {
+                self.portal_session.user_id = result.portal_session.user_id;
+            }
+            if !result.portal_session.ipv4.is_empty() {
+                self.portal_session.ipv4 = result.portal_session.ipv4;
+            }
+            if self.portal_session.ipv4.is_empty() {
+                self.portal_session.ipv4 = find_local_ipv4();
+            }
+            if self.portal_session.ipv6.is_empty() && !self.portal_session.ipv4.is_empty() {
+                self.portal_session.ipv6 = find_local_ipv6(&self.portal_session.ipv4);
+            }
+            return;
+        }
+
+        self.portal_session = result.portal_session;
         if self.portal_session.state == PortalPageState::LoginRequired {
             self.consecutive_failures = self.failure_threshold;
             if !self.reconnect_in_progress {
@@ -201,7 +229,10 @@ impl NetworkMonitor {
             return PortalSession::default();
         };
         let mut session = parse_portal_page(&html, portal_url);
-        if session.is_online() && session.ipv6.is_empty() {
+        if session.ipv4.is_empty() {
+            session.ipv4 = find_local_ipv4();
+        }
+        if session.is_online() && session.ipv6.is_empty() && !session.ipv4.is_empty() {
             session.ipv6 = find_local_ipv6(&session.ipv4);
         }
         session
