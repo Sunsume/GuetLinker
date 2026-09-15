@@ -22,11 +22,15 @@ The current version is thoroughly validated on Windows 10 / 11; macOS and Linux 
 ## 📥 Downloads & Installation
 
 > [!TIP]
-> **Version Notice**: `v1.0.0` on GitHub Releases was built with the **legacy Python + PySide6** stack. The repository has been fully rewritten in **Tauri 2 + Rust + Vue 3**. New binary installers for this modern architecture are currently being prepared. We recommend following [GitHub Releases](https://github.com/Sunsume/GuetLinker/releases) for the upcoming release, or following the instructions below to [build directly from source](#5-package-windows-installer).
+> **Version Notice**: GitHub Releases provides two Windows x64 distributions:
+> - 🚀 **Portable Standalone (`GuetLinker_*_x64_Portable.exe`)**: Single-file executable. Just download and run without installation—ideal for USB drives or quick deployment.
+> - 📦 **Standard Setup (`GuetLinker_*_x64-setup.exe`)**: Guided installer that configures Start Menu shortcuts, desktop icons, and standard uninstallation.
+>
+> Visit [GitHub Releases](https://github.com/Sunsume/GuetLinker/releases) for the latest release, or follow the instructions below to [build directly from source](#5-package-windows-installer--portable-executable).
 
 | Platform | Architecture | Status (Tauri 2) | Download & Availability |
 | :--- | :--- | :--- | :--- |
-| **Windows** | x64 | **Validated** | [Visit Releases for Latest Builds](https://github.com/Sunsume/GuetLinker/releases) or Build from Source |
+| **Windows** | x64 | **Validated** | [Visit Releases for Portable / Installer](https://github.com/Sunsume/GuetLinker/releases) |
 | **macOS** | Apple Silicon / Intel | Planned | In Progress |
 | **Linux** | x64 | Planned | In Progress |
 
@@ -48,8 +52,9 @@ The current version is thoroughly validated on Windows 10 / 11; macOS and Linux 
   - Displays local IP addresses (IPv4 / IPv6) and network interface status dynamically.
   - Verified logout and immediate "Cancel Connection" support while a request is in flight.
 
-- 🔄 **Intelligent Monitoring & Auto-Reconnect**
+- 🔄 **Intelligent Monitoring & Sleep/Wake Self-Healing**
   - Lightweight background heartbeat checks for campus network connectivity.
+  - **Sleep/Wake Self-Healing**: Automatically resets stale sessions when a laptop wakes from sleep or hibernation, waits for adapter DHCP re-association, and immediately triggers connection probes to avoid long freezes.
   - Immediate disconnect detection with configurable exponential backoff reconnection.
   - Intuitive behavior: Pauses auto-reconnect when manually disconnected by the user to avoid fighting manual intent.
 
@@ -180,7 +185,7 @@ cargo test --lib
 cargo clippy --all-targets --all-features -- -D warnings
 ```
 
-### 5. Package Windows Installer
+### 5. Package Windows Installer & Portable Executable
 
 From the repository root:
 
@@ -188,8 +193,9 @@ From the repository root:
 npm run tauri build
 ```
 
-Upon completion, an NSIS installer and portable executable will be generated at:
+Upon completion, an NSIS installer and a portable standalone executable will be generated at:
 - Installer: `src-tauri/target/release/bundle/nsis/GuetLinker_2.0.0_x64-setup.exe`
+- Portable: `src-tauri/target/release/guetlinker-desktop.exe`
 
 ---
 

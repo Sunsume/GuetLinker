@@ -135,6 +135,14 @@ impl NetworkMonitor {
         self.status = NetworkStatus::Disconnected;
     }
 
+    pub fn on_system_resume(&mut self) {
+        self.consecutive_failures = 0;
+        self.reconnect_in_progress = false;
+        if self.portal_session.is_online() {
+            self.portal_session.state = PortalPageState::Unknown;
+        }
+    }
+
     async fn probe(&self, portal_url: &str, include_external: bool) -> ProbeResult {
         let portal_session = self.fetch_portal_session(portal_url).await;
         let external_reachable =
@@ -299,5 +307,18 @@ mod tests {
         let mut monitor = NetworkMonitor::new().unwrap();
         monitor.apply_probe_result(probe(PortalPageState::Unknown, Some(true)));
         assert_eq!(monitor.status, NetworkStatus::Connected);
+    }
+
+    #[test]
+    fn on_system_resume_resets_state_and_invalidates_online_session() {
+        let mut monitor = NetworkMonitor::new().unwrap();
+        monitor.apply_probe_result(probe(PortalPageState::Online, None));
+        assert_eq!(monitor.status, NetworkStatus::Connected);
+        assert!(monitor.portal_session.is_online());
+
+        monitor.on_system_resume();
+        assert_eq!(monitor.consecutive_failures, 0);
+        assert!(!monitor.reconnect_in_progress);
+        assert_eq!(monitor.portal_session.state, PortalPageState::Unknown);
     }
 }

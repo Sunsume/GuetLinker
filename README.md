@@ -22,11 +22,15 @@
 ## 📥 下载与安装
 
 > [!TIP]
-> **版本说明**：GitHub Releases 上的 `v1.0.0` 为**旧版 Python + PySide6** 构建产物。当前仓库已全面重构为 **Tauri 2 + Rust + Vue 3** 架构。新版二进制安装包正在筹备发布，建议关注 [GitHub Releases](https://github.com/Sunsume/GuetLinker/releases) 获取最新发布，或按下方指引直接[从源码构建](#5-打包生成-windows-安装包)。
+> **版本说明**：GitHub Releases 提供两种 Windows x64 版本供您选择：
+> - 🚀 **绿色免安装版 (`GuetLinker_*_x64_Portable.exe`)**：纯单文件，解压或下载即可双击直接运行，适合放 U 盘或快速使用。
+> - 📦 **标准安装包版 (`GuetLinker_*_x64-setup.exe`)**：带有安装向导，自动配置开始菜单、桌面图标与卸载支持。
+>
+> 建议前往 [GitHub Releases](https://github.com/Sunsume/GuetLinker/releases) 下载最新版本，或按下方指引直接[从源码构建](#5-打包生成-windows-安装包与便携版)。
 
 | 平台 | 架构 | 新版状态 (Tauri 2) | 下载与获取 |
 | :--- | :--- | :--- | :--- |
-| **Windows** | x64 | **已验证** | [前往 Releases 查看最新发布](https://github.com/Sunsume/GuetLinker/releases) 或 本地构建 |
+| **Windows** | x64 | **已验证** | [前往 Releases 下载便携版 / 安装包](https://github.com/Sunsume/GuetLinker/releases) |
 | **macOS** | Apple Silicon / Intel | 计划中 | 适配中 |
 | **Linux** | x64 | 计划中 | 适配中 |
 
@@ -48,8 +52,9 @@
   - 本地 IP 地址（IPv4 / IPv6）与网络适配器状态动态呈现。
   - 支持随时安全注销与连接过程中即时“取消连接”。
 
-- 🔄 **智能监测与断线自动重连**
+- 🔄 **智能监测与休眠唤醒自愈**
   - 后台轻量级定时巡检校园网在线状态。
+  - **休眠唤醒自愈**：笔记本睡眠/合盖唤醒后自动重置过期会话，缓冲等待网卡与 DHCP 完成协商并立即触发网络探测与重连，杜绝传统客户端唤醒后长时间假死。
   - 断网即时检测，可配置毫秒级退避重连机制。
   - 人性化逻辑：用户手动点击“断开”后自动挂起重连，避免与手动操作冲突。
 
@@ -180,7 +185,7 @@ cargo test --lib
 cargo clippy --all-targets --all-features -- -D warnings
 ```
 
-### 5. 打包生成 Windows 安装包
+### 5. 打包生成 Windows 安装包与便携版
 
 在仓库根目录执行：
 
@@ -188,8 +193,9 @@ cargo clippy --all-targets --all-features -- -D warnings
 npm run tauri build
 ```
 
-构建成功后，将在以下路径生成轻量的 NSIS 安装包与便携版程序：
+构建成功后，将在以下路径生成轻量的 NSIS 安装包与单文件便携版：
 - 安装包：`src-tauri/target/release/bundle/nsis/GuetLinker_2.0.0_x64-setup.exe`
+- 便携版：`src-tauri/target/release/guetlinker-desktop.exe`
 
 ---
 

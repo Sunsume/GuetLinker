@@ -8,7 +8,7 @@ mod portal;
 mod self_service;
 mod state;
 
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
@@ -153,7 +153,18 @@ fn start_network_monitor(app: &tauri::AppHandle) {
                 PORTAL_POLL_INTERVAL
             };
             publish_network_result(&app, state.inner(), result).await;
+
+            let sleep_start = SystemTime::now();
             tokio::time::sleep(retry_delay).await;
+            let sleep_elapsed = SystemTime::now().duration_since(sleep_start).unwrap_or_default();
+
+            // Detect system sleep/resume if timer slept significantly longer than expected (> 5s)
+            if sleep_elapsed > Duration::from_secs(5) {
+                state.monitor.lock().await.on_system_resume();
+                last_full_check = None;
+                // Wait briefly for network adapter re-association (DHCP/Wi-Fi) after resume
+                tokio::time::sleep(Duration::from_millis(1000)).await;
+            }
         }
     });
 }
