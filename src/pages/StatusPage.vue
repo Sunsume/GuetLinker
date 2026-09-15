@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 
 import PixelIcon from "../components/PixelIcon.vue";
@@ -28,6 +28,19 @@ export interface DiagnosticReport {
   summary: string;
   steps: DiagnosticStep[];
   exportText: string;
+}
+
+export interface PublicEgressInfo {
+  ip: string;
+  country: string;
+  countryCode: string;
+  region: string;
+  city: string;
+  isp: string;
+  org: string;
+  isProxyNode: boolean;
+  isCernet: boolean;
+  latencyMs: number | null;
 }
 
 const props = defineProps<{
@@ -120,9 +133,36 @@ async function copyReport(): Promise<void> {
   }
 }
 
+// ---------------- Public & Proxy Egress ----------------
+const egressInfo = ref<PublicEgressInfo | null>(null);
+const loadingEgress = ref(false);
+
+async function refreshEgressInfo(): Promise<void> {
+  if (loadingEgress.value) return;
+  loadingEgress.value = true;
+  try {
+    const result = await invoke<PublicEgressInfo | null>("get_public_egress_info");
+    egressInfo.value = result;
+  } catch {
+    // ignore error
+  } finally {
+    loadingEgress.value = false;
+  }
+}
+
+watch(
+  () => props.snapshot.connected,
+  (connected) => {
+    if (connected) {
+      refreshEgressInfo();
+    }
+  }
+);
+
 onMounted(() => {
   probeQuality();
   probeIntervalId = window.setInterval(probeQuality, 3000);
+  refreshEgressInfo();
 });
 
 onUnmounted(() => {
@@ -198,6 +238,76 @@ onUnmounted(() => {
           <PixelIcon v-else name="reload" />
           刷新测速
         </button>
+      </div>
+    </article>
+
+    <!-- Public & Proxy Egress Panel -->
+    <article class="pixel-panel egress-panel">
+      <div class="egress-header">
+        <div class="egress-title-row">
+          <PixelIcon name="globe" />
+          <h3>公网 / 代理出口检测</h3>
+        </div>
+        <button
+          class="pixel-button pixel-button--small egress-refresh-btn"
+          type="button"
+          :disabled="loadingEgress"
+          @click="refreshEgressInfo"
+          title="重新探测当前对外公网 IP 及翻墙节点"
+        >
+          <PixelIcon v-if="loadingEgress" class="spin" name="reload" />
+          <PixelIcon v-else name="reload" />
+          {{ loadingEgress ? "探测中…" : "刷新出口" }}
+        </button>
+      </div>
+
+      <div v-if="egressInfo" class="egress-body">
+        <div class="egress-status-bar">
+          <span
+            class="egress-tag"
+            :class="egressInfo.isCernet ? 'egress-tag--danger' : (egressInfo.isProxyNode ? 'egress-tag--proxy' : 'egress-tag--direct')"
+          >
+            <span class="egress-dot"></span>
+            {{ egressInfo.isCernet ? '校园教育网出口 (高危·严查代理)' : (egressInfo.isProxyNode ? '代理翻墙节点 (已生效)' : '商业运营商出口 (安全直连)') }}
+          </span>
+          <span class="egress-ip-pill">{{ egressInfo.ip }}</span>
+        </div>
+
+        <div class="egress-grid">
+          <div class="egress-grid-item">
+            <span class="egress-label">物理落地所在地</span>
+            <span class="egress-val">{{ egressInfo.country }} {{ egressInfo.region }} {{ egressInfo.city }}</span>
+          </div>
+          <div class="egress-grid-item">
+            <span class="egress-label">出口网络运营商 / 节点机房</span>
+            <span class="egress-val" :title="egressInfo.isp || egressInfo.org">{{ egressInfo.isp || egressInfo.org || '—' }}</span>
+          </div>
+        </div>
+
+        <!-- Warning if on CERNET -->
+        <div v-if="egressInfo.isCernet" class="egress-alert-box egress-alert-box--danger">
+          <p><strong>⚠️ 高危警示：</strong>检测到当前公网出口为学校教育网 (CERNET)。学校正在严厉稽查代理翻墙，<strong>严禁在此出口开启翻墙工具</strong>，以免被关联学号封禁！请在“连接与设置”中切换为【中国移动】并重新连接。</p>
+        </div>
+
+        <!-- Safe notice if on Proxy -->
+        <div v-else-if="egressInfo.isProxyNode" class="egress-alert-box egress-alert-box--proxy">
+          <p><strong>🚀 翻墙代理节点已生效：</strong>当前对外真实出口为海外/云服务器节点（{{ egressInfo.country }} {{ egressInfo.city }} · {{ egressInfo.isp }}），所有外网流量均已通过代理中转，未走校内出口。</p>
+        </div>
+
+        <!-- Notice if direct China Mobile -->
+        <div v-else class="egress-alert-box egress-alert-box--direct">
+          <p><strong>🟢 商业运营商直连：</strong>当前为国内运营商专线出口，未经过学校教育网行为审计系统，日常可安心上网。</p>
+        </div>
+      </div>
+
+      <div v-else-if="loadingEgress" class="egress-empty">
+        <PixelIcon class="spin" name="reload" />
+        <span>正在精准探测当前对外公网 IP 及翻墙代理节点…</span>
+      </div>
+
+      <div v-else class="egress-empty">
+        <PixelIcon name="close" />
+        <span>尚未获取公网出口信息（请在连接网络后点击右上角“刷新出口”）</span>
       </div>
     </article>
 

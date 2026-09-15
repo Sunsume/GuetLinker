@@ -83,6 +83,7 @@ pub fn run() {
             commands::check_app_update,
             commands::get_network_quality,
             commands::run_network_diagnostics,
+            commands::get_public_egress_info,
         ])
         .run(tauri::generate_context!())
         .expect("error while running GuetLinker");

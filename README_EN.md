@@ -78,6 +78,14 @@ The current version is thoroughly validated on Windows 10 / 11; macOS and Linux 
   - Generates structured, color-coded diagnostic assessment cards with targeted troubleshooting advice.
   - **1-Click Formatted Report Export**: Copies a clean ASCII diagnostic breakdown directly to the clipboard for instant submission to the student campus IT support group.
 
+- 🌐 **Public Egress & Proxy Node Real-Time Detection**
+  - Automatically identifies real public outbound IP, geographic physical location (country, province/region, city), and ISP / datacenter provider.
+  - **Intelligent Egress Security State Recognition**:
+    - 🚀 **Proxy Egress Node (Active)**: Accurately identifies overseas / cloud proxy nodes, verifying that traffic bypasses campus firewalls.
+    - 🟢 **Commercial ISP (Direct Safe)**: China Mobile / Telecom / Unicom commercial line, bypassing CERNET behavioral audit.
+    - ⚠️ **CERNET Campus Exit (High Risk Alert)**: Detects school education network exit and alerts users against opening proxies to prevent student ID suspension.
+  - One-click "Refresh Egress" button for instant status refresh after changing proxy nodes or networks.
+
 - 🎮 **Immersive Retro Pixel-Art Desktop Experience**
   - Custom dark retro pixel art UI theme, bundling the open-source Fusion Pixel font and Pixelarticons.
   - Frameless pixel window frame (640×820 aspect ratio) with custom top drag area and quick minimization.
@@ -205,7 +213,7 @@ npm run tauri build
 ```
 
 Upon completion, an NSIS installer and a portable standalone executable will be generated at:
-- Installer: `src-tauri/target/release/bundle/nsis/GuetLinker_2.2.0_x64-setup.exe`
+- Installer: `src-tauri/target/release/bundle/nsis/GuetLinker_2.3.0_x64-setup.exe`
 - Portable: `src-tauri/target/release/guetlinker-desktop.exe`
 
 ---

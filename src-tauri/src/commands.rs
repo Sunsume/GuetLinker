@@ -542,6 +542,11 @@ pub async fn get_network_quality() -> Result<Vec<crate::diagnostics::NodePingRes
 }
 
 #[tauri::command]
+pub async fn get_public_egress_info() -> Result<Option<crate::diagnostics::PublicEgressInfo>, String> {
+    Ok(crate::diagnostics::fetch_public_egress().await)
+}
+
+#[tauri::command]
 pub async fn run_network_diagnostics(
     state: State<'_, AppState>,
 ) -> Result<crate::diagnostics::DiagnosticReport, String> {

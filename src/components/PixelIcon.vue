@@ -11,6 +11,7 @@ import computerUrl from "pixelarticons/svg/computer.svg";
 import eyeOffUrl from "pixelarticons/svg/eye-off.svg";
 import eyeUrl from "pixelarticons/svg/eye.svg";
 import githubUrl from "pixelarticons/svg/git-branch.svg";
+import globeUrl from "pixelarticons/svg/globe.svg";
 import infoUrl from "pixelarticons/svg/info-box.svg";
 import linkUrl from "pixelarticons/svg/link.svg";
 import loginUrl from "pixelarticons/svg/login.svg";
@@ -32,6 +33,7 @@ const icons = {
   eye: eyeUrl,
   "eye-off": eyeOffUrl,
   github: githubUrl,
+  globe: globeUrl,
   info: infoUrl,
   link: linkUrl,
   login: loginUrl,

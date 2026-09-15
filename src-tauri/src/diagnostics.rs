@@ -35,6 +35,35 @@ pub struct DiagnosticReport {
     pub export_text: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PublicEgressInfo {
+    pub ip: String,
+    pub country: String,
+    pub country_code: String,
+    pub region: String,
+    pub city: String,
+    pub isp: String,
+    pub org: String,
+    pub is_proxy_node: bool,
+    pub is_cernet: bool,
+    pub latency_ms: Option<u32>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct IpApiResponse {
+    status: Option<String>,
+    country: Option<String>,
+    #[serde(rename = "countryCode")]
+    country_code: Option<String>,
+    #[serde(rename = "regionName")]
+    region_name: Option<String>,
+    city: Option<String>,
+    isp: Option<String>,
+    org: Option<String>,
+    query: Option<String>,
+}
+
 pub async fn measure_tcp_ping(addr: &str, timeout_ms: u64) -> Option<u32> {
     let start = Instant::now();
     match tokio::time::timeout(Duration::from_millis(timeout_ms), TcpStream::connect(addr)).await {
@@ -66,6 +95,76 @@ pub async fn probe_network_quality() -> Vec<NodePingResult> {
         });
     }
     results
+}
+
+pub async fn fetch_public_egress() -> Option<PublicEgressInfo> {
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(4))
+        .build()
+        .ok()?;
+
+    let start = Instant::now();
+    let response = client
+        .get("http://ip-api.com/json/?lang=zh-CN")
+        .send()
+        .await
+        .ok()?;
+
+    let latency_ms = start.elapsed().as_millis() as u32;
+    let data: IpApiResponse = response.json().await.ok()?;
+
+    if data.status.as_deref() != Some("success") {
+        return None;
+    }
+
+    let ip = data.query.unwrap_or_default();
+    if ip.is_empty() {
+        return None;
+    }
+
+    let country = data.country.unwrap_or_else(|| "未知地区".into());
+    let country_code = data.country_code.unwrap_or_default();
+    let region = data.region_name.unwrap_or_default();
+    let city = data.city.unwrap_or_default();
+    let isp = data.isp.unwrap_or_default();
+    let org = data.org.unwrap_or_default();
+
+    let combined_network = format!("{country} {region} {city} {isp} {org}").to_lowercase();
+    let is_cernet = combined_network.contains("cernet")
+        || combined_network.contains("教育网")
+        || combined_network.contains("桂林电子科技大学")
+        || combined_network.contains("guilin university of electronic technology");
+
+    let cc = country_code.to_uppercase();
+    let is_proxy_node = if !cc.is_empty() && cc != "CN" {
+        true
+    } else {
+        let combined_org = format!("{isp} {org}").to_lowercase();
+        combined_org.contains("cloudflare")
+            || combined_org.contains("digitalocean")
+            || combined_org.contains("vultr")
+            || combined_org.contains("linode")
+            || combined_org.contains("aws")
+            || combined_org.contains("amazon")
+            || combined_org.contains("google")
+            || combined_org.contains("microsoft")
+            || combined_org.contains("oracle")
+            || combined_org.contains("m247")
+            || combined_org.contains("ovh")
+    };
+
+    Some(PublicEgressInfo {
+        ip,
+        country,
+        country_code,
+        region,
+        city,
+        isp,
+        org,
+        is_proxy_node,
+        is_cernet,
+        latency_ms: Some(latency_ms.max(1)),
+    })
 }
 
 pub async fn run_system_diagnostic(
@@ -220,6 +319,39 @@ pub async fn run_system_diagnostic(
             details: "尚未在“连接与设置”中保存学号凭据，无法执行自动重连。".into(),
             suggestion: Some("前往“连接与设置”页面保存账号密码以享受无感自愈重连".into()),
         });
+    }
+
+    // 6. 公网与代理出口安全探测
+    if let Some(egress) = fetch_public_egress().await {
+        if egress.is_cernet {
+            has_warning = true;
+            steps.push(DiagnosticStep {
+                id: "egress_safety".into(),
+                name: "公网出口与代理安全".into(),
+                status: "warning".into(),
+                title: "当前处于校园网教育网出口 (严查代理)".into(),
+                details: format!("公网出口 IP: {} (CERNET/桂电)，学校对教育网出口严格审计代理行为。", egress.ip),
+                suggestion: Some("切勿在教育网出口开启翻墙工具以防学号被封，建议在“连接与设置”中切换至【中国移动】出口".into()),
+            });
+        } else if egress.is_proxy_node {
+            steps.push(DiagnosticStep {
+                id: "egress_safety".into(),
+                name: "公网出口与代理安全".into(),
+                status: "pass".into(),
+                title: "代理/翻墙出口已生效".into(),
+                details: format!("出口 IP: {} ({} {} · {})", egress.ip, egress.country, egress.city, egress.isp),
+                suggestion: None,
+            });
+        } else {
+            steps.push(DiagnosticStep {
+                id: "egress_safety".into(),
+                name: "公网出口与代理安全".into(),
+                status: "pass".into(),
+                title: "运营商商业专线出口 (安全直连)".into(),
+                details: format!("出口 IP: {} ({} {} · {})", egress.ip, egress.country, egress.city, egress.isp),
+                suggestion: None,
+            });
+        }
     }
 
     let (overall_status, summary) = if has_error {
