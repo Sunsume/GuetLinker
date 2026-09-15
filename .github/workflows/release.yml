@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  release:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [windows-latest]
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Build Tauri application and publish release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'GuetLinker ${{ github.ref_name }}'
+          releaseBody: |
+            ## GuetLinker ${{ github.ref_name }}
+
+            面向桂林电子科技大学（GUET）校园网的现代化跨平台桌面客户端。
+            基于 **Tauri 2 + Rust + Vue 3** 架构打造，具备轻量、安全、免 Python 运行环境的特点。
+
+            ### 下载与安装说明
+            - **Windows 用户**：请下载下方的 `GuetLinker_*_x64-setup.exe` 安装包进行安装；
+            - 首次安装若出现 Windows SmartScreen 提示，点击“更多信息” -> “仍要运行”即可。
+          releaseDraft: false
+          prerelease: false
