@@ -105,7 +105,7 @@ async function checkForUpdates(): Promise<void> {
         </button>
       </div>
 
-      <div class="check-feedback-slot">
+      <div v-if="!updateInfo?.hasUpdate" class="check-feedback-slot">
         <p v-if="checkMessage" class="check-feedback">{{ checkMessage }}</p>
       </div>
 
