@@ -436,10 +436,7 @@ async fn apply_login_result(
 async fn disconnect(state: &AppState, portal_url: &str) -> Result<NetworkSnapshot, String> {
     state.login_cancel.store(true, Ordering::Relaxed);
     let session = state.monitor.lock().await.portal_session();
-    let result: LogoutResult = state.auth.logout(portal_url, Some(session)).await;
-    if !result.success {
-        return Err(result.message);
-    }
+    let _result: LogoutResult = state.auth.logout(portal_url, Some(session)).await;
     let mut monitor = state.monitor.lock().await;
     monitor.mark_disconnected();
     Ok(monitor.snapshot())

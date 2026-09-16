@@ -354,25 +354,15 @@ select:focus-visible {
   max-width: 580px;
   margin: 0 auto;
   box-sizing: border-box;
+  flex-shrink: 0;
 }
 
 .status-console {
   display: flex;
   flex-direction: column;
   min-height: auto;
-  padding: 16px 20px 14px;
+  padding: 16px 20px 16px;
   position: relative;
-  overflow: hidden;
-}
-
-.status-console::after {
-  content: "NET://GUET_LINK";
-  position: absolute;
-  top: 12px;
-  right: 18px;
-  color: #2f7188;
-  font-size: 10px;
-  letter-spacing: 1px;
 }
 
 .status-hero-row {
@@ -1180,11 +1170,26 @@ select:focus-visible {
 .status-strip--error span { background: var(--red); box-shadow: 3px 3px 0 #49151a; }
 
 .inline-error {
-  max-width: 350px;
-  margin: 11px 0 -14px;
+  width: 100%;
+  margin: 10px 0 0;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   color: var(--red);
+  background: rgba(255, 71, 87, 0.12);
+  border: 1px solid rgba(255, 71, 87, 0.35);
   font-size: 11px;
+  line-height: 1.4;
   text-align: center;
+  box-sizing: border-box;
+}
+
+.inline-error .pixel-icon {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
 }
 
 .page-enter-active,

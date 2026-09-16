@@ -21,7 +21,7 @@ export interface AppUpdateInfo {
 }
 
 const repositoryUrl = "https://github.com/Sunsume/GuetLinker";
-const appVersion = ref("v2.3.2");
+const appVersion = ref("v2.3.3");
 const checking = ref(false);
 const checkMessage = ref("");
 const updateInfo = ref<AppUpdateInfo | null>(null);

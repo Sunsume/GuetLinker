@@ -238,42 +238,67 @@ impl AuthService {
             Some(value) if value.is_online() => value,
             _ => match self.portal_session(portal_url).await {
                 Some(value) => value,
-                None => return logout_failure("无法获取当前校园网会话"),
+                None => PortalSession::default(),
             },
         };
 
         if current.state == PortalPageState::LoginRequired {
             return logout_success("当前已经断开");
         }
-        if !current.is_online() {
-            return logout_failure("无法确认当前校园网登录状态");
-        }
-        let Some(request) = current.logout_request else {
-            return logout_failure("在线页未提供注销接口");
-        };
 
-        let response = if request.method == "POST" {
-            self.client
-                .post(&request.url)
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .body(request.data)
-                .send()
-                .await
-        } else {
-            self.client.get(&request.url).send().await
-        };
-        match response {
-            Ok(value) if value.status().is_success() => {}
-            _ => return logout_failure("注销请求失败"),
-        }
+        let mut logged_out = false;
 
-        match self.portal_session(portal_url).await {
-            Some(value) if value.state == PortalPageState::LoginRequired => {
-                logout_success("校园网已断开")
+        // 1. Try logout request parsed from the online session
+        if let Some(request) = &current.logout_request {
+            let response = if request.method == "POST" {
+                self.client
+                    .post(&request.url)
+                    .header("Content-Type", "application/x-www-form-urlencoded")
+                    .body(request.data.clone())
+                    .send()
+                    .await
+            } else {
+                self.client.get(&request.url).send().await
+            };
+            if let Ok(value) = response {
+                // Dr.COM logout typically responds with a 302 redirect back to login page or 200 OK
+                if value.status().is_success() || value.status().is_redirection() {
+                    logged_out = true;
+                }
             }
-            Some(value) if value.is_online() => logout_failure("注销请求已发送，但门户仍显示在线"),
-            _ => logout_failure("注销请求已发送，但无法确认是否已断开"),
         }
+
+        // 2. Fallback to standard Dr.COM endpoints if not yet confirmed
+        if !logged_out {
+            if let Ok(portal) = url::Url::parse(portal_url) {
+                let origin = format!("{}://{}", portal.scheme(), portal.host_str().unwrap_or("10.0.1.5"));
+                let candidates = [
+                    format!("{origin}/F.htm"),
+                    format!("{origin}:801/eportal/portal/logout"),
+                    format!("{origin}/eportal/portal/logout"),
+                ];
+                for candidate in candidates {
+                    if let Ok(res) = self.client.get(&candidate).timeout(Duration::from_millis(1500)).send().await {
+                        if res.status().is_success() || res.status().is_redirection() {
+                            logged_out = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Check portal session verification if reachable
+        if let Some(value) = self.portal_session(portal_url).await {
+            if value.state == PortalPageState::LoginRequired {
+                return logout_success("校园网已断开");
+            }
+            if value.is_online() && !logged_out {
+                return logout_failure("注销请求已发送，但门户仍显示在线");
+            }
+        }
+
+        logout_success("校园网已断开")
     }
 
     pub async fn isp_options(&self, portal_url: &str) -> AppResult<Vec<IspInfo>> {

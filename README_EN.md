@@ -213,7 +213,7 @@ npm run tauri build
 ```
 
 Upon completion, an NSIS installer and a portable standalone executable will be generated at:
-- Installer: `src-tauri/target/release/bundle/nsis/GuetLinker_2.3.2_x64-setup.exe`
+- Installer: `src-tauri/target/release/bundle/nsis/GuetLinker_2.3.3_x64-setup.exe`
 - Portable: `src-tauri/target/release/guetlinker-desktop.exe`
 
 ---

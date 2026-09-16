@@ -280,7 +280,10 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <p v-if="error" class="inline-error">{{ error }}</p>
+      <div v-if="error" class="inline-error">
+        <PixelIcon name="close" />
+        <span>{{ error }}</span>
+      </div>
 
       <!-- 3. Subtools: diagnostics & speed test -->
       <div class="status-subtools">
