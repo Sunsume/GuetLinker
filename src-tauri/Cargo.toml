@@ -1,6 +1,6 @@
 [package]
 name = "guetlinker-desktop"
-version = "2.3.4"
+version = "2.3.5"
 description = "GuetLinker campus-network desktop client"
 authors = ["GuetLinker Team"]
 edition = "2021"

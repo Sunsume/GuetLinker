@@ -109,9 +109,9 @@ async function submitLogin(): Promise<void> {
       return;
     }
     const result = await invoke<LoginResult>("self_service_login", {
-      account: loginForm.account,
+      account,
       password: loginForm.password,
-      captcha: loginForm.captcha,
+      captcha: loginForm.captcha.trim(),
     });
     notice.value = result.message;
     captchaRequired.value = result.captchaRequired;

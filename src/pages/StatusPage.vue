@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onActivated, onDeactivated, onMounted, onUnmounted, ref, watch } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 
 import PixelIcon from "../components/PixelIcon.vue";
@@ -194,17 +194,39 @@ watch(
   }
 );
 
-onMounted(() => {
+function startProbing(): void {
+  if (probeIntervalId) return;
   probeQuality();
   probeIntervalId = window.setInterval(probeQuality, 3000);
+}
+
+function stopProbing(): void {
+  if (probeIntervalId) {
+    clearInterval(probeIntervalId);
+    probeIntervalId = null;
+  }
+}
+
+onMounted(() => {
+  startProbing();
   refreshEgressInfo();
   loadSavedCredentials();
 });
 
-onUnmounted(() => {
-  if (probeIntervalId) {
-    clearInterval(probeIntervalId);
+onActivated(() => {
+  startProbing();
+  loadSavedCredentials();
+  if (props.snapshot.connected && !egressInfo.value) {
+    refreshEgressInfo();
   }
+});
+
+onDeactivated(() => {
+  stopProbing();
+});
+
+onUnmounted(() => {
+  stopProbing();
 });
 </script>
 

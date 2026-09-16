@@ -9,7 +9,7 @@ mod portal;
 mod self_service;
 mod state;
 
-use std::time::{Duration, Instant, SystemTime};
+use std::time::{Duration, Instant};
 
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
@@ -180,9 +180,9 @@ fn start_network_monitor(app: &tauri::AppHandle) {
             };
             publish_network_result(&app, state.inner(), result).await;
 
-            let sleep_start = SystemTime::now();
+            let sleep_start = Instant::now();
             tokio::time::sleep(retry_delay).await;
-            let sleep_elapsed = SystemTime::now().duration_since(sleep_start).unwrap_or_default();
+            let sleep_elapsed = sleep_start.elapsed();
 
             // Detect system sleep/resume if timer slept significantly longer than expected (> 5s)
             if sleep_elapsed > Duration::from_secs(5) {

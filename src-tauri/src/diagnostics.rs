@@ -85,7 +85,14 @@ pub async fn probe_network_quality() -> Vec<NodePingResult> {
 
     let mut results = Vec::with_capacity(targets.len());
     for (id, name, addr) in targets {
-        let latency = measure_tcp_ping(addr, 1500).await;
+        let latency = if id == "gateway" {
+            match measure_tcp_ping(addr, 1500).await {
+                Some(lat) => Some(lat),
+                None => measure_tcp_ping("10.0.1.5:801", 1500).await,
+            }
+        } else {
+            measure_tcp_ping(addr, 1500).await
+        };
         results.push(NodePingResult {
             id: id.to_string(),
             name: name.to_string(),
@@ -210,13 +217,16 @@ pub async fn run_system_diagnostic(
         });
     }
 
-    // 2. 校园网认证网关连通性 (10.0.1.5:80)
-    let gateway_ping = measure_tcp_ping("10.0.1.5:80", 2000).await;
+    // 2. 校园网认证网关连通性 (10.0.1.5:80 / 10.0.1.5:801)
+    let gateway_ping = match measure_tcp_ping("10.0.1.5:80", 1500).await {
+        Some(ms) => Some((ms, 80)),
+        None => measure_tcp_ping("10.0.1.5:801", 1500).await.map(|ms| (ms, 801)),
+    };
     match gateway_ping {
-        Some(ms) => {
+        Some((ms, port)) => {
             steps.push(DiagnosticStep {
                 id: "gateway".into(),
-                name: "校园网网关 (10.0.1.5)".into(),
+                name: format!("校园网网关 (10.0.1.5:{port})"),
                 status: "pass".into(),
                 title: "认证网关通信正常".into(),
                 details: format!("往返延迟: {ms} ms"),
@@ -230,7 +240,7 @@ pub async fn run_system_diagnostic(
                 name: "校园网网关 (10.0.1.5)".into(),
                 status: "fail".into(),
                 title: "无法访问认证网关".into(),
-                details: "无法与桂电认证门户 10.0.1.5 建立 TCP 握手。".into(),
+                details: "无法与桂电认证门户 10.0.1.5 建立 TCP 握手 (端口 80/801 均超时)。".into(),
                 suggestion: Some("请确认当前设备接入的是桂电校内有线或无线网络 (非手机个人热点)".into()),
             });
         }

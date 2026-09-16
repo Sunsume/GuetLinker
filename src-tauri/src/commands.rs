@@ -20,6 +20,12 @@ pub struct SaveSettingsResult {
 }
 
 async fn enrich_snapshot_with_config(snapshot: &mut NetworkSnapshot, state: &AppState) {
+    if snapshot.ipv4.is_empty() || snapshot.ipv4 == "—" {
+        snapshot.ipv4 = crate::network::find_local_ipv4();
+    }
+    if (snapshot.ipv6.is_empty() || snapshot.ipv6 == "—") && !snapshot.ipv4.is_empty() && snapshot.ipv4 != "—" {
+        snapshot.ipv6 = crate::network::find_local_ipv6(&snapshot.ipv4);
+    }
     if snapshot.connected {
         let config = state.config.lock().await;
         let settings = config.settings();
@@ -28,9 +34,6 @@ async fn enrich_snapshot_with_config(snapshot: &mut NetworkSnapshot, state: &App
         }
         if (snapshot.operator.is_empty() || snapshot.operator == "—" || snapshot.operator == "未知运营商") && !settings.operator.is_empty() {
             snapshot.operator = settings.operator;
-        }
-        if snapshot.ipv4.is_empty() || snapshot.ipv4 == "—" {
-            snapshot.ipv4 = crate::network::find_local_ipv4();
         }
     }
 }
@@ -84,9 +87,21 @@ pub async fn poll_network(
     }
     if should_reconnect {
         let result = connect(state, &portal_url, credentials).await;
-        if let Ok(snapshot) = &result {
-            state.record_network_status(snapshot.status).await;
-            notify_if_enabled(app, notifications, "校园网已自动重新连接");
+        match &result {
+            Ok(snapshot) => {
+                state.record_network_status(snapshot.status).await;
+                notify_if_enabled(app, notifications, "校园网已自动重新连接");
+            }
+            Err(error) => {
+                if crate::auth::is_definitive_credential_error(error) {
+                    state.pause_auto_reconnect();
+                    notify_if_enabled(
+                        app,
+                        notifications,
+                        &format!("自动重连已暂停：{error}，请检查账号密码或欠费状态"),
+                    );
+                }
+            }
         }
         return result;
     }
@@ -487,7 +502,10 @@ fn is_newer_version(latest: &str, current: &str) -> bool {
     let latest_parts = parse_parts(latest);
     let current_parts = parse_parts(current);
 
-    for (l, c) in latest_parts.iter().zip(current_parts.iter()) {
+    let max_len = latest_parts.len().max(current_parts.len());
+    for i in 0..max_len {
+        let l = latest_parts.get(i).copied().unwrap_or(0);
+        let c = current_parts.get(i).copied().unwrap_or(0);
         if l > c {
             return true;
         }
@@ -495,7 +513,7 @@ fn is_newer_version(latest: &str, current: &str) -> bool {
             return false;
         }
     }
-    latest_parts.len() > current_parts.len()
+    false
 }
 
 #[tauri::command]
@@ -609,5 +627,7 @@ mod tests {
         assert!(!is_newer_version("v2.1.0", "2.1.0"));
         assert!(!is_newer_version("2.0.1", "2.1.0"));
         assert!(!is_newer_version("v1.0.0", "2.1.0"));
+        assert!(!is_newer_version("2.3.4.0", "2.3.4"));
+        assert!(is_newer_version("2.3.4.1", "2.3.4"));
     }
 }

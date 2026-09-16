@@ -128,11 +128,30 @@ pub struct AuthService {
     retry_delay: Duration,
 }
 
+pub fn is_definitive_credential_error(message: &str) -> bool {
+    let lower = message.to_ascii_lowercase();
+    let keywords = [
+        "密码错误",
+        "账号不存在",
+        "用户不存在",
+        "password_error",
+        "user_not_found",
+        "欠费",
+        "停机",
+        "锁定",
+        "冻结",
+        "余额不足",
+        "销户",
+        "限制登录",
+    ];
+    keywords.iter().any(|k| lower.contains(k))
+}
+
 impl AuthService {
     pub fn new() -> AppResult<Self> {
         let client = Client::builder()
             .danger_accept_invalid_certs(true)
-            .redirect(Policy::none())
+            .redirect(Policy::limited(5))
             .no_proxy()
             .user_agent(USER_AGENT)
             .timeout(Duration::from_secs(3))
@@ -180,6 +199,8 @@ impl AuthService {
                     return verified_login(session, &context, wireless.response_text);
                 }
                 last_message = "无线登录请求已被服务器接受，但门户仍未确认在线".into();
+            } else if is_definitive_credential_error(&wireless.message) {
+                return wireless;
             }
 
             if cancel.load(Ordering::Relaxed) {
@@ -197,6 +218,8 @@ impl AuthService {
                     return verified_login(session, &context, ethernet.response_text);
                 }
                 last_message = "有线登录请求已被服务器接受，但门户仍未确认在线".into();
+            } else if is_definitive_credential_error(&ethernet.message) {
+                return ethernet;
             }
 
             if attempt < self.max_retries && wait_delay_or_cancel(self.retry_delay, &cancel).await {

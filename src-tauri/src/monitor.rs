@@ -40,11 +40,11 @@ pub struct NetworkSnapshot {
 impl NetworkSnapshot {
     fn new(status: NetworkStatus, session: &PortalSession) -> Self {
         let mut ipv4 = session.ipv4.clone();
-        if ipv4.is_empty() && status == NetworkStatus::Connected {
+        if ipv4.is_empty() {
             ipv4 = find_local_ipv4();
         }
         let mut ipv6 = session.ipv6.clone();
-        if ipv6.is_empty() && status == NetworkStatus::Connected && !ipv4.is_empty() {
+        if ipv6.is_empty() && !ipv4.is_empty() {
             ipv6 = find_local_ipv6(&ipv4);
         }
         Self {
@@ -77,7 +77,7 @@ pub struct NetworkMonitor {
 impl NetworkMonitor {
     pub fn new() -> AppResult<Self> {
         let client = Client::builder()
-            .redirect(Policy::none())
+            .redirect(Policy::limited(5))
             .no_proxy()
             .timeout(Duration::from_secs(3))
             .build()?;
