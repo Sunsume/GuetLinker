@@ -57,33 +57,31 @@
 * {
   box-sizing: border-box;
   scrollbar-width: thin;
-  scrollbar-color: #1a495e #030a12;
+  scrollbar-color: var(--cyan) #08131c;
 }
 
 /* ================= Retro Cyberpunk Pixel Scrollbar ================= */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #02070e;
-  border-left: 1px solid #091f2c;
+  background: #08131c;
+  border-left: 2px solid var(--frame-dark);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #143e53;
-  border: 1px solid var(--cyan);
-  box-shadow: inset 1px 1px 0 #2eaec6;
+  background: var(--cyan);
+  border: 2px solid #08131c;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--cyan);
-  box-shadow: 0 0 6px var(--cyan);
+  background: #7ef3ff;
 }
 
 ::-webkit-scrollbar-corner {
-  background: #02070e;
+  background: #08131c;
 }
 
 html,
@@ -255,6 +253,10 @@ select:focus-visible {
 
 .nav-bar,
 .status-console,
+.egress-panel,
+.quality-panel,
+.diagnostic-panel,
+.about-panel,
 .scroll-page > .page-heading,
 .scroll-page > .settings-form,
 .scroll-page > .account-login,
@@ -341,7 +343,7 @@ select:focus-visible {
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  padding: 12px 0 20px;
+  padding: 16px 0 28px;
   overflow-x: hidden;
   overflow-y: auto;
 }
@@ -350,7 +352,7 @@ select:focus-visible {
 .egress-panel,
 .quality-panel,
 .diagnostic-panel {
-  width: calc(100% - 24px);
+  width: calc(100% - 18px);
   max-width: 580px;
   margin: 0 auto;
   box-sizing: border-box;
@@ -990,21 +992,24 @@ select:focus-visible {
 .metrics strong { display: block; margin-top: 7px; color: var(--text); font-size: 16px; }
 
 .about-page {
-  display: grid;
-  place-items: center;
-  padding-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 0 36px;
 }
 
 .about-panel {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  width: min(480px, calc(100vw - 90px));
-  min-height: 350px;
-  padding: 36px;
+  width: calc(100% - 18px);
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 380px;
+  padding: 32px 36px 28px;
   overflow: hidden;
   text-align: center;
+  box-sizing: border-box;
 }
 
 .about-panel::after {
@@ -1074,10 +1079,23 @@ select:focus-visible {
   margin-top: 18px;
 }
 
+.about-actions .pixel-button--small {
+  min-width: 120px;
+}
+
+.check-feedback-slot {
+  min-height: 22px;
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .check-feedback {
-  margin: 10px 0 0;
+  margin: 0;
   font-size: 11px;
   color: var(--muted);
+  line-height: 1.4;
 }
 
 .update-card {
@@ -1206,12 +1224,10 @@ select:focus-visible {
 
 /* ================= Egress Panel & Proxy Detection ================= */
 .egress-panel {
-  padding: 10px 14px 10px;
-  background: var(--surface);
-  border: 2px solid var(--frame);
-  box-shadow:
-    inset 1px 1px 0 var(--frame-light),
-    inset -1px -1px 0 var(--frame-dark);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
 }
 
 .egress-header {
@@ -1289,8 +1305,8 @@ select:focus-visible {
   display: grid;
   grid-template-columns: 1.2fr 1.8fr;
   gap: 12px;
-  background: #030a10;
-  padding: 10px 14px;
+  background: #030c14;
+  padding: 12px 16px;
   border: 1px solid var(--frame-dark);
 }
 
@@ -1488,11 +1504,10 @@ select:focus-visible {
 
 /* ================= Diagnostics Panel (Collapsible) ================= */
 .diagnostic-panel {
-  padding: 12px 16px;
+  padding: 16px 20px;
   box-sizing: border-box;
-  background: #051019;
-  border: 2px solid var(--frame);
-  box-shadow: 3px 3px 0 var(--shadow);
+  display: flex;
+  flex-direction: column;
 }
 
 .diagnostic-header {

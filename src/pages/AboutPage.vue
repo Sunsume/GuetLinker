@@ -21,7 +21,7 @@ export interface AppUpdateInfo {
 }
 
 const repositoryUrl = "https://github.com/Sunsume/GuetLinker";
-const appVersion = ref("v2.3.3");
+const appVersion = ref("v2.3.4");
 const checking = ref(false);
 const checkMessage = ref("");
 const updateInfo = ref<AppUpdateInfo | null>(null);
@@ -78,7 +78,7 @@ async function checkForUpdates(): Promise<void> {
 </script>
 
 <template>
-  <section class="page about-page">
+  <section class="page scroll-page about-page">
     <article class="pixel-panel about-panel">
       <img :src="brandMark" alt="" />
       <h2>GuetLinker</h2>
@@ -105,7 +105,9 @@ async function checkForUpdates(): Promise<void> {
         </button>
       </div>
 
-      <p v-if="checkMessage" class="check-feedback">{{ checkMessage }}</p>
+      <div class="check-feedback-slot">
+        <p v-if="checkMessage" class="check-feedback">{{ checkMessage }}</p>
+      </div>
 
       <!-- New version available details card -->
       <div v-if="updateInfo?.hasUpdate" class="update-card">

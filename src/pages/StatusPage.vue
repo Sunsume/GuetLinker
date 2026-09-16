@@ -209,7 +209,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <section class="page status-page">
+  <section class="page scroll-page status-page">
     <article class="pixel-panel status-console">
       <!-- 1. Hero row: orb + texts on left, connect/disconnect button on right -->
       <div class="status-hero-row">
@@ -310,6 +310,42 @@ onUnmounted(() => {
       </div>
     </article>
 
+    <!-- Diagnostics Panel (Collapsible, placed immediately below Status Console) -->
+    <article v-if="showDiagnostic && diagnosticReport" class="pixel-panel diagnostic-panel">
+      <div class="diagnostic-header">
+        <h3>网络体检报告</h3>
+        <span
+          class="diagnostic-badge"
+          :class="'diagnostic-badge--' + diagnosticReport.overallStatus"
+        >
+          {{ diagnosticReport.overallStatus === "healthy" ? "链路良好" : (diagnosticReport.overallStatus === "warning" ? "存在警告" : "检测异常") }}
+        </span>
+      </div>
+      <p class="diagnostic-summary">{{ diagnosticReport.summary }}</p>
+
+      <div class="diagnostic-steps-scroll">
+        <div v-for="step in diagnosticReport.steps" :key="step.id" class="diagnostic-step">
+          <div class="step-top">
+            <span>{{ step.name }}</span>
+            <span :class="'node-latency--' + (step.status === 'pass' ? 'fast' : (step.status === 'warning' ? 'medium' : 'timeout'))">
+              {{ step.status === 'pass' ? '✓ ' + step.title : '! ' + step.title }}
+            </span>
+          </div>
+          <p class="step-details">{{ step.details }}</p>
+          <p v-if="step.suggestion" class="step-suggestion">> 建议: {{ step.suggestion }}</p>
+        </div>
+      </div>
+
+      <div class="diagnostic-actions">
+        <button class="pixel-button pixel-button--small pixel-button--primary" type="button" @click="copyReport">
+          <PixelIcon name="save" />{{ copySuccess ? "✓ 已复制报障单！" : "复制报障诊断单" }}
+        </button>
+        <button class="pixel-button pixel-button--small" type="button" @click="showDiagnostic = false">
+          <PixelIcon name="close" />收起
+        </button>
+      </div>
+    </article>
+
     <!-- Public & Proxy Egress Panel (Spacious) -->
     <article class="pixel-panel egress-panel">
       <div class="egress-header">
@@ -378,42 +414,6 @@ onUnmounted(() => {
       <div v-else class="egress-loading-compact">
         <PixelIcon name="close" />
         <span>未获取出口数据（连接网络后点击“刷新出口”）</span>
-      </div>
-    </article>
-
-    <!-- Diagnostics Panel (Collapsible) -->
-    <article v-if="showDiagnostic && diagnosticReport" class="pixel-panel diagnostic-panel">
-      <div class="diagnostic-header">
-        <h3>网络体检报告</h3>
-        <span
-          class="diagnostic-badge"
-          :class="'diagnostic-badge--' + diagnosticReport.overallStatus"
-        >
-          {{ diagnosticReport.overallStatus === "healthy" ? "链路良好" : (diagnosticReport.overallStatus === "warning" ? "存在警告" : "检测异常") }}
-        </span>
-      </div>
-      <p class="diagnostic-summary">{{ diagnosticReport.summary }}</p>
-
-      <div class="diagnostic-steps-scroll">
-        <div v-for="step in diagnosticReport.steps" :key="step.id" class="diagnostic-step">
-          <div class="step-top">
-            <span>{{ step.name }}</span>
-            <span :class="'node-latency--' + (step.status === 'pass' ? 'fast' : (step.status === 'warning' ? 'medium' : 'timeout'))">
-              {{ step.status === 'pass' ? '✓ ' + step.title : '! ' + step.title }}
-            </span>
-          </div>
-          <p class="step-details">{{ step.details }}</p>
-          <p v-if="step.suggestion" class="step-suggestion">> 建议: {{ step.suggestion }}</p>
-        </div>
-      </div>
-
-      <div class="diagnostic-actions">
-        <button class="pixel-button pixel-button--small pixel-button--primary" type="button" @click="copyReport">
-          <PixelIcon name="save" />{{ copySuccess ? "✓ 已复制报障单！" : "复制报障诊断单" }}
-        </button>
-        <button class="pixel-button pixel-button--small" type="button" @click="showDiagnostic = false">
-          <PixelIcon name="close" />收起
-        </button>
       </div>
     </article>
 
