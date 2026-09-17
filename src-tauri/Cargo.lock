@@ -1695,7 +1695,7 @@ dependencies = [
 
 [[package]]
 name = "guetlinker-desktop"
-version = "2.3.5"
+version = "2.4.0"
 dependencies = [
  "aes-gcm",
  "base64 0.22.1",
