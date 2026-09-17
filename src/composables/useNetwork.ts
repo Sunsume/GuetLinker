@@ -1,5 +1,6 @@
 import { computed, onMounted, onUnmounted, ref, type ComputedRef, type Ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 export type NetworkStatus = "connected" | "disconnected" | "reconnecting" | "unknown";
 
@@ -22,7 +23,7 @@ interface NetworkState {
   setConnection: (connected: boolean) => Promise<void>;
 }
 
-const SNAPSHOT_REFRESH_INTERVAL = 2_000;
+const SNAPSHOT_REFRESH_INTERVAL = 5_000;
 
 function initialSnapshot(): NetworkSnapshot {
   return {
@@ -109,12 +110,27 @@ export function useNetwork(): NetworkState {
     }
   }
 
+  let unlisten: UnlistenFn | undefined;
+
   onMounted(async function initializeNetwork(): Promise<void> {
+    try {
+      unlisten = await listen<NetworkSnapshot>("network-status-changed", (event) => {
+        if (!busy.value) {
+          snapshot.value = event.payload;
+          error.value = "";
+        }
+      });
+    } catch {
+      // 容错：事件监听失败时依靠定时器轮询
+    }
     await refreshSnapshot();
   });
 
   onUnmounted(function stopSnapshotRefresh(): void {
     window.clearTimeout(refreshTimer);
+    if (unlisten) {
+      unlisten();
+    }
   });
 
   return { busy, connecting, error, snapshot, cancelConnection, setConnection };

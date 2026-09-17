@@ -368,7 +368,7 @@ impl AuthService {
             self.client
                 .get(endpoint)
                 .query(&params)
-                .timeout(Duration::from_millis(800))
+                .timeout(Duration::from_millis(2000))
                 .send()
                 .await,
             "无线",
@@ -402,7 +402,7 @@ impl AuthService {
             self.client
                 .get(endpoint)
                 .query(&params)
-                .timeout(Duration::from_millis(800))
+                .timeout(Duration::from_millis(2000))
                 .send()
                 .await,
             "有线",
@@ -421,7 +421,7 @@ impl AuthService {
         portal_url: &str,
         cancel: &AtomicBool,
     ) -> Option<PortalSession> {
-        let deadline = Instant::now() + Duration::from_millis(1500);
+        let deadline = Instant::now() + Duration::from_millis(2500);
         loop {
             if let Some(session) = self.verify_online(portal_url).await {
                 return Some(session);
@@ -429,7 +429,7 @@ impl AuthService {
             if cancel.load(Ordering::Relaxed) || Instant::now() >= deadline {
                 return None;
             }
-            tokio::time::sleep(Duration::from_millis(200)).await;
+            tokio::time::sleep(Duration::from_millis(350)).await;
         }
     }
 

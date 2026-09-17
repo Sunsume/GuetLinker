@@ -18,8 +18,6 @@ use tauri::{
 };
 
 const TRAY_ID: &str = "main-tray";
-const PORTAL_POLL_INTERVAL: Duration = Duration::from_millis(500);
-const RECONNECT_RETRY_DELAY: Duration = Duration::from_millis(1500);
 
 #[derive(Clone, Copy)]
 enum TrayAction {
@@ -163,31 +161,69 @@ fn start_network_monitor(app: &tauri::AppHandle) {
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
         let mut last_full_check = None;
+        let mut consecutive_reconnect_failures: u32 = 0;
         loop {
             let state = app.state::<state::AppState>();
-            let full_check_interval =
-                Duration::from_secs(state.config.lock().await.check_interval());
+            let (check_interval_secs, auto_reconnect) = {
+                let config = state.config.lock().await;
+                (config.check_interval(), config.auto_reconnect())
+            };
+
+            let full_check_interval = Duration::from_secs(check_interval_secs);
             let include_external = last_full_check
                 .is_none_or(|checked_at: Instant| checked_at.elapsed() >= full_check_interval);
             if include_external {
                 last_full_check = Some(Instant::now());
             }
+
             let result = commands::poll_network(state.inner(), &app, include_external).await;
-            let retry_delay = if result.is_err() {
-                RECONNECT_RETRY_DELAY
-            } else {
-                PORTAL_POLL_INTERVAL
+
+            let delay = match &result {
+                Ok(snapshot) if snapshot.connected => {
+                    consecutive_reconnect_failures = 0;
+                    // 在线状态：按配置周期（默认 25~30 秒）静默心跳，增加 0..3000ms 随机抖动模拟真人
+                    let jitter_ms = (Instant::now().elapsed().as_nanos() % 3000) as u64;
+                    Duration::from_millis(check_interval_secs * 1000 + jitter_ms)
+                }
+                Ok(snapshot) if snapshot.status == monitor::NetworkStatus::Reconnecting => {
+                    // 正在重连中，给底层 2 秒缓冲时间
+                    Duration::from_millis(2000)
+                }
+                Ok(_) => {
+                    // 已断线
+                    if auto_reconnect && state.auto_reconnect_allowed() {
+                        // 指数退避重试：3s -> 6s -> 12s -> 最大 30s
+                        consecutive_reconnect_failures =
+                            consecutive_reconnect_failures.saturating_add(1);
+                        let backoff_secs =
+                            (3u64 * (1 << (consecutive_reconnect_failures - 1).min(3))).min(30);
+                        Duration::from_secs(backoff_secs)
+                    } else {
+                        // 未开启重连或已触发密码错误熔断保护，进入 10 秒低频待命
+                        Duration::from_secs(10)
+                    }
+                }
+                Err(_) => {
+                    // 探测或通信异常，退避保护
+                    consecutive_reconnect_failures =
+                        consecutive_reconnect_failures.saturating_add(1);
+                    let backoff_secs =
+                        (3u64 * (1 << (consecutive_reconnect_failures - 1).min(3))).min(30);
+                    Duration::from_secs(backoff_secs)
+                }
             };
+
             publish_network_result(&app, state.inner(), result).await;
 
             let sleep_start = Instant::now();
-            tokio::time::sleep(retry_delay).await;
+            tokio::time::sleep(delay).await;
             let sleep_elapsed = sleep_start.elapsed();
 
-            // Detect system sleep/resume if timer slept significantly longer than expected (> 5s)
-            if sleep_elapsed > Duration::from_secs(5) {
+            // Detect system sleep/resume if timer slept significantly longer than expected (> 5s beyond delay)
+            if sleep_elapsed > delay + Duration::from_secs(5) {
                 state.monitor.lock().await.on_system_resume();
                 last_full_check = None;
+                consecutive_reconnect_failures = 0;
                 // Wait briefly for network adapter re-association (DHCP/Wi-Fi) after resume
                 tokio::time::sleep(Duration::from_millis(1000)).await;
             }
@@ -219,6 +255,7 @@ async fn publish_network_result(
         Err(_) => state.monitor.lock().await.snapshot(),
     };
     update_tray(app, &snapshot);
+    let _ = app.emit("network-status-changed", &snapshot);
 }
 
 fn update_tray(app: &tauri::AppHandle, snapshot: &monitor::NetworkSnapshot) {

@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{net::IpAddr, time::Duration};
 
 use chrono::Local;
 use reqwest::{redirect::Policy, Client};
@@ -10,6 +10,8 @@ use crate::{
     portal::{parse_portal_page, PortalPageState, PortalSession},
 };
 
+const USER_AGENT: &str =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36";
 const CHECK_URLS: [&str; 2] = [
     "https://connectivitycheck.gstatic.com/generate_204",
     "https://www.msftconnecttest.com/connecttest.txt",
@@ -76,11 +78,18 @@ pub struct NetworkMonitor {
 
 impl NetworkMonitor {
     pub fn new() -> AppResult<Self> {
-        let client = Client::builder()
+        let mut builder = Client::builder()
             .redirect(Policy::limited(5))
             .no_proxy()
-            .timeout(Duration::from_secs(3))
-            .build()?;
+            .user_agent(USER_AGENT)
+            .timeout(Duration::from_secs(3));
+
+        let local_ip = find_local_ipv4();
+        if let Ok(ip) = local_ip.parse::<IpAddr>() {
+            builder = builder.local_address(Some(ip));
+        }
+
+        let client = builder.build()?;
         Ok(Self {
             client,
             status: NetworkStatus::Unknown,
@@ -217,6 +226,11 @@ impl NetworkMonitor {
             .get(portal_url)
             .header("Cache-Control", "no-cache, no-store, max-age=0")
             .header("Pragma", "no-cache")
+            .header(
+                "Accept",
+                "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            )
+            .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
             .send()
             .await;
         let Ok(response) = response else {
