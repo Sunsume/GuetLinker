@@ -1,5 +1,12 @@
 use std::net::{IpAddr, Ipv6Addr};
 
+/// Standard Microsoft Edge on Windows 10/11 User-Agent string.
+/// Since Edge is Chromium-based, this UA contains both `Chrome/...` and `Edg/...`,
+/// ensuring compatibility with campus audits that check for either Google Chrome or Microsoft Edge,
+/// while matching Windows native WebView2 runtime.
+pub const DEFAULT_USER_AGENT: &str =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 Edg/126.0.0.0";
+
 pub fn select_preferred_ipv6<I>(candidates: I) -> String
 where
     I: IntoIterator<Item = (String, bool, bool)>,

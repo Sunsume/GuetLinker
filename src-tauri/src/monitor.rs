@@ -6,12 +6,10 @@ use serde::Serialize;
 
 use crate::{
     error::AppResult,
-    network::{find_local_ipv4, find_local_ipv6},
+    network::{find_local_ipv4, find_local_ipv6, DEFAULT_USER_AGENT},
     portal::{parse_portal_page, PortalPageState, PortalSession},
 };
 
-const USER_AGENT: &str =
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36";
 const CHECK_URLS: [&str; 2] = [
     "https://connectivitycheck.gstatic.com/generate_204",
     "https://www.msftconnecttest.com/connecttest.txt",
@@ -81,7 +79,7 @@ impl NetworkMonitor {
         let mut builder = Client::builder()
             .redirect(Policy::limited(5))
             .no_proxy()
-            .user_agent(USER_AGENT)
+            .user_agent(DEFAULT_USER_AGENT)
             .timeout(Duration::from_secs(3));
 
         let local_ip = find_local_ipv4();

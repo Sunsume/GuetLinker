@@ -13,11 +13,12 @@ use serde::Serialize;
 use serde_json::{Map, Value};
 use url::Url;
 
-use crate::error::{AppError, AppResult};
+use crate::{
+    error::{AppError, AppResult},
+    network::DEFAULT_USER_AGENT,
+};
 
 pub const SELF_SERVICE_URL: &str = "https://nicdrcom.guet.edu.cn/Self/";
-const USER_AGENT: &str =
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct LoginPage {
@@ -313,7 +314,7 @@ fn build_client() -> AppResult<Client> {
         .danger_accept_invalid_certs(true)
         .cookie_store(true)
         .no_proxy()
-        .user_agent(USER_AGENT)
+        .user_agent(DEFAULT_USER_AGENT)
         .timeout(Duration::from_secs(8));
 
     let local_ip = crate::network::find_local_ipv4();

@@ -18,13 +18,11 @@ use url::Url;
 
 use crate::{
     error::{AppError, AppResult},
-    network::find_local_ipv6,
+    network::{find_local_ipv6, DEFAULT_USER_AGENT},
     portal::{parse_portal_page, PortalPageState, PortalSession},
 };
 
 const CAPTIVE_PROBE_URLS: [&str; 2] = ["http://1.1.1.1", "http://119.29.29.29"];
-const USER_AGENT: &str =
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36";
 const USERNAME_PATTERNS: [&str; 9] = [
     "username",
     "user_id",
@@ -154,7 +152,7 @@ impl AuthService {
             .danger_accept_invalid_certs(true)
             .redirect(Policy::limited(5))
             .no_proxy()
-            .user_agent(USER_AGENT)
+            .user_agent(DEFAULT_USER_AGENT)
             .timeout(Duration::from_secs(3));
 
         let local_ip = crate::network::find_local_ipv4();
