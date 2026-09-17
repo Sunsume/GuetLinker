@@ -1,4 +1,7 @@
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::{
+    net::IpAddr,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
 use base64::{engine::general_purpose::STANDARD, Engine};
 use chrono::NaiveDate;
@@ -184,6 +187,7 @@ impl SelfServiceClient {
     }
 
     pub async fn prepare_login(&mut self, account: &str) -> AppResult<String> {
+        self.reset()?;
         let page = self.fetch_login_page().await?;
         self.pending_page = Some(page);
         self.pending_account = account.trim().to_owned();
@@ -305,13 +309,19 @@ impl SelfServiceClient {
 }
 
 fn build_client() -> AppResult<Client> {
-    Ok(Client::builder()
+    let mut builder = Client::builder()
         .danger_accept_invalid_certs(true)
         .cookie_store(true)
         .no_proxy()
         .user_agent(USER_AGENT)
-        .timeout(Duration::from_secs(8))
-        .build()?)
+        .timeout(Duration::from_secs(8));
+
+    let local_ip = crate::network::find_local_ipv4();
+    if let Ok(ip) = local_ip.parse::<IpAddr>() {
+        builder = builder.local_address(Some(ip));
+    }
+
+    Ok(builder.build()?)
 }
 
 fn normalized_base_url(base_url: &str) -> AppResult<Url> {

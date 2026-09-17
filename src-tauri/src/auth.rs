@@ -1,5 +1,6 @@
 use std::{
     collections::BTreeMap,
+    net::IpAddr,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -149,13 +150,19 @@ pub fn is_definitive_credential_error(message: &str) -> bool {
 
 impl AuthService {
     pub fn new() -> AppResult<Self> {
-        let client = Client::builder()
+        let mut builder = Client::builder()
             .danger_accept_invalid_certs(true)
             .redirect(Policy::limited(5))
             .no_proxy()
             .user_agent(USER_AGENT)
-            .timeout(Duration::from_secs(3))
-            .build()?;
+            .timeout(Duration::from_secs(3));
+
+        let local_ip = crate::network::find_local_ipv4();
+        if let Ok(ip) = local_ip.parse::<IpAddr>() {
+            builder = builder.local_address(Some(ip));
+        }
+
+        let client = builder.build()?;
         Ok(Self {
             client,
             max_retries: 3,

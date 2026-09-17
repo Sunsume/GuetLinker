@@ -3,6 +3,7 @@ import { computed, onActivated, reactive, ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 
 import PixelIcon from "../components/PixelIcon.vue";
+import { recognizeCaptcha } from "../utils/captchaOcr";
 
 interface Settings {
   studentId: string;
@@ -116,6 +117,9 @@ async function submitLogin(): Promise<void> {
     notice.value = result.message;
     captchaRequired.value = result.captchaRequired;
     captchaImage.value = result.captchaImage;
+    if (result.captchaImage) {
+      await applyCaptchaOcr(result.captchaImage);
+    }
     if (result.success && result.session) {
       session.value = result.session;
       captchaRequired.value = false;
@@ -131,6 +135,20 @@ async function submitLogin(): Promise<void> {
   }
 }
 
+async function applyCaptchaOcr(image: string): Promise<void> {
+  if (!image) {
+    return;
+  }
+  try {
+    const code = await recognizeCaptcha(image);
+    if (code && code.length === 4) {
+      loginForm.captcha = code;
+    }
+  } catch {
+    // 保留用户现有输入或留空
+  }
+}
+
 async function prepareLogin(): Promise<void> {
   captchaRequired.value = true;
   captchaImage.value = "";
@@ -139,6 +157,9 @@ async function prepareLogin(): Promise<void> {
   try {
     captchaImage.value = await invoke<string>("self_service_prepare_login", { account });
     preparedAccount.value = account;
+    if (captchaImage.value) {
+      await applyCaptchaOcr(captchaImage.value);
+    }
   } catch (error) {
     notice.value = describeError(error);
   }
@@ -153,6 +174,9 @@ async function refreshCaptcha(): Promise<void> {
   captchaRequired.value = true;
   try {
     captchaImage.value = await invoke<string>("self_service_captcha");
+    if (captchaImage.value) {
+      await applyCaptchaOcr(captchaImage.value);
+    }
   } catch (error) {
     notice.value = describeError(error);
   }
@@ -258,7 +282,7 @@ onActivated(async function refreshSavedCredentials(): Promise<void> {
       <p class="field-note">自动使用“连接与设置”中保存的校园网账号和密码。</p>
       <label v-if="captchaRequired" class="captcha-field">
         <span>验证码</span>
-        <input v-model="loginForm.captcha" autocomplete="off" />
+        <input v-model="loginForm.captcha" autocomplete="off" placeholder="已自动识别" maxlength="4" />
         <button type="button" title="刷新验证码" @click="refreshCaptcha">
           <img v-if="captchaImage" :src="`data:image/png;base64,${captchaImage}`" alt="验证码" />
           <span v-else class="captcha-placeholder">刷新</span>
