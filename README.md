@@ -2,7 +2,7 @@
 
 **简体中文** | [English](README_EN.md)
 
-面向桂林电子科技大学校园网的 Windows 桌面客户端，提供 Dr.COM 登录、实时状态
+面向桂林电子科技大学校园网的桌面客户端（支持 Windows 和 macOS），提供 Dr.COM 登录、实时状态
 检测、可选自动重连，以及校园网自助服务账户与流量信息查询。
 
 > 本项目是非官方开源客户端，与桂林电子科技大学网络中心及 Dr.COM 厂商无隶属或
@@ -12,7 +12,7 @@
 
 | Windows | macOS | Linux |
 |---|---|---|
-| [下载 Windows x64](https://github.com/Sunsume/GuetLinker/releases/download/v1.0.0/GuetLinker-Windows-x64.exe) | - | - |
+| [下载 Windows x64](https://github.com/Sunsume/GuetLinker/releases/download/v1.0.0/GuetLinker-Windows-x64.exe) | [下载 macOS (v1.0.0)](https://github.com/Sunsume/GuetLinker/releases/download/v1.0.0/GuetLinker-macOS.zip) | - |
 
 ## 功能
 
@@ -37,7 +37,7 @@ GuetLinker 使用两套彼此独立的会话：
 
 ## 环境要求
 
-- Windows 10 或 Windows 11
+- Windows 10/11 或 macOS 11+
 - Python 3.11+
 - 可访问桂电校园网门户的网络环境
 

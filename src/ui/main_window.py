@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QMainWindow,
     QStatusBar,
@@ -30,6 +31,10 @@ class MainWindow(QMainWindow):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        # Closing the main window must never end the background monitor. This
+        # complements QApplication.setQuitOnLastWindowClosed(False) and is
+        # especially important for the menu-bar app lifecycle on macOS.
+        self.setAttribute(Qt.WidgetAttribute.WA_QuitOnClose, False)
         self._setup_ui()
 
     def _setup_ui(self) -> None:
@@ -84,12 +89,10 @@ class MainWindow(QMainWindow):
     # ── Window behaviour ──────────────────────────────────────────
 
     def closeEvent(self, event) -> None:  # noqa: N802
-        """Override close to minimize to tray instead of quitting."""
-        # The app.py will intercept this and hide to tray
-        # For now, just hide the window
+        """Hide the window while keeping background monitoring alive."""
         event.ignore()
         self.hide()
-        logger.debug("Window hidden to tray")
+        logger.debug("Window hidden; GuetLinker continues in the system tray")
 
     def show_and_activate(self) -> None:
         """Show the window and bring it to the front."""

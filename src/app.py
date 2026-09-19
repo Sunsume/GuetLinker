@@ -101,6 +101,12 @@ class GuetLinkerApp(QObject):
         self._monitor.check_completed.connect(
             self._window.status_page.update_last_check
         )
+        self._monitor.speed_changed.connect(
+            self._window.status_page.update_network_speed
+        )
+        self._monitor.speed_changed.connect(
+            self._tray.update_network_speed
+        )
 
         # Monitor → Auth (auto-reconnect)
         self._monitor.reconnect_requested.connect(self._on_reconnect_requested)
@@ -110,6 +116,9 @@ class GuetLinkerApp(QObject):
         self._auth_client.login_failed.connect(self._on_login_failed)
         self._auth_client.login_started.connect(self._on_login_started)
         self._auth_client.login_cancelled.connect(self._on_login_cancelled)
+        self._auth_client.diagnostic_message.connect(
+            self._window.status_page.add_log
+        )
         self._auth_client.isp_options_loaded.connect(
             self._on_isp_options_loaded
         )

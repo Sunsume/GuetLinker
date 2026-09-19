@@ -15,6 +15,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from src.ui.input_method_hint import InputMethodHint
+
 
 class SelfServiceLoginDialog(QDialog):
     """Non-blocking modal dialog with an on-demand CAPTCHA row."""
@@ -56,6 +58,8 @@ class SelfServiceLoginDialog(QDialog):
         self._password_input.setEchoMode(QLineEdit.EchoMode.Password)
         self._password_input.setMinimumHeight(40)
         layout.addWidget(self._password_input)
+        self._password_input_hint = InputMethodHint(self._password_input)
+        layout.addWidget(self._password_input_hint)
 
         self._show_password = QCheckBox("显示密码")
         self._show_password.toggled.connect(self._toggle_password)

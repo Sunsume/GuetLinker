@@ -3,6 +3,7 @@
 import pytest
 
 from src.core.monitor import NetworkMonitor, NetworkStatus, _ProbeResult
+from src.core.network_speed import NetworkSpeed
 from src.core.portal import PortalPageState, PortalSession
 from tests.test_portal import ONLINE_PAGE
 
@@ -194,6 +195,18 @@ class TestNetworkMonitor:
         monitor = NetworkMonitor(portal_url="http://10.0.1.5/")
         assert monitor.status_poll_interval_ms == 500
         assert monitor._status_timer.interval() == 500
+        monitor.close()
+
+    def test_speed_tick_publishes_current_throughput(self):
+        monitor = NetworkMonitor(portal_url="http://10.0.1.5/")
+        expected = NetworkSpeed(download_bps=2048, upload_bps=1024)
+        received = []
+        monitor._speed_sampler.sample = lambda: expected
+        monitor.speed_changed.connect(received.append)
+
+        monitor._on_speed_timeout()
+
+        assert received == [expected]
         monitor.close()
 
     def test_realtime_poll_detects_browser_login_after_manual_disconnect(

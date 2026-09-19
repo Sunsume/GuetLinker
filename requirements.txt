@@ -2,3 +2,5 @@ PySide6>=6.6
 httpx>=0.27
 beautifulsoup4>=4.12
 cryptography>=42.0
+psutil>=6.0
+pyobjc-framework-Cocoa>=10.3; sys_platform == "darwin"

@@ -2,6 +2,7 @@
 
 import base64
 import threading
+import httpx
 import pytest
 
 from src.core.auth_client import AuthClient, ParsedForm, ISPInfo, LoginResult
@@ -166,11 +167,85 @@ class TestAuthClientParsing:
         succeeded = AuthClient._check_login_result(
             'dr1003({"result":1,"msg":"认证成功"})'
         )
+        succeeded_with_portal_value = AuthClient._check_login_result(
+            'dr1003({"result":"ok","msg":"1"})'
+        )
 
         assert failed.success is False
         assert failed.message == "认证失败"
         assert succeeded.success is True
         assert succeeded.message == "认证成功"
+        assert succeeded_with_portal_value.success is True
+        assert succeeded_with_portal_value.message == "1"
+
+    @pytest.mark.parametrize("password", ["special-secret", "päss中😀!"])
+    def test_endpoint_diagnostic_redacts_credentials(self, password):
+        client = self._make_client()
+        messages = []
+        client.diagnostic_message.connect(messages.append)
+        account = "20240001@glgd"
+        encoded_password = client._encode_portal_password(password)
+        utf8_password = base64.b64encode(password.encode()).decode()
+
+        class Response:
+            status_code = 200
+            text = (
+                'dr1003({"result":0,"ret_code":1,"msg":"'
+                f'{account} {password} {encoded_password} {utf8_password}'
+                '"})'
+            )
+
+            def raise_for_status(self):
+                pass
+
+        class FakeClient:
+            def get(self, url, params=None, timeout=None):
+                return Response()
+
+        client._request_wireless_login(
+            FakeClient(),
+            account,
+            password,
+            {},
+        )
+
+        diagnostic = "\n".join(messages)
+        assert "result=0" in diagnostic
+        assert "ret_code=1" in diagnostic
+        assert account not in diagnostic
+        assert "20240001" not in diagnostic
+        assert password not in diagnostic
+        assert encoded_password not in diagnostic
+        assert utf8_password not in diagnostic
+        client.close()
+
+    @pytest.mark.parametrize(
+        ("password", "expected"),
+        [
+            ("secret", "c2VjcmV0"),
+            ("päss!", "cORzcyE="),
+            ("A中!", "QS0h"),
+            ("A😀!", "QT0AIQ=="),
+        ],
+    )
+    def test_wireless_password_matches_guet_javascript(self, password, expected):
+        """Golden values from a41.js, including UTF-16 surrogate pairs."""
+        client = self._make_client()
+        requests = []
+
+        def capture(request):
+            requests.append(request)
+            return httpx.Response(200, text='dr1003({"result":1})')
+
+        try:
+            with httpx.Client(transport=httpx.MockTransport(capture)) as mock:
+                client._request_wireless_login(
+                    mock, "20240001@glgd", password, {}
+                )
+            assert len(requests) == 1
+            assert requests[0].url.params["user_password"] == expected
+        finally:
+            client.close()
 
     def test_parse_prefers_login_form(self):
         """The parser should ignore unrelated forms before the login form."""
@@ -229,7 +304,7 @@ class TestAuthClientParsing:
                         status_code=302,
                         location=(
                             "http://10.0.1.5/?"
-                            "wlanuserip=10.1.2.3&UserV6IP=2001%3A%3A1&"
+                            "wlanuserip=10.1.2.3&"
                             "wlanusermac=AA-BB-CC-DD-EE-FF&"
                             "wlanacip=10.0.0.1&wlanacname=GUET-AC"
                         ),
@@ -246,6 +321,11 @@ class TestAuthClientParsing:
                 raise AssertionError(f"unexpected URL: {url}")
 
         client._login_client_factory = FakeClient
+        verified_session = parse_portal_page(ONLINE_PAGE, client.portal_url)
+        verification_rounds = iter([None, verified_session])
+        client._wait_until_online = lambda *args, **kwargs: next(
+            verification_rounds
+        )
         result = client.login("20240001", "secret", "5")
 
         assert result.success is True
@@ -265,8 +345,11 @@ class TestAuthClientParsing:
                 ("wlan_ac_ip", "10.0.0.1"),
                 ("wlan_ac_name", "GUET-AC"),
                 ("wlan_user_ip", "10.1.2.3"),
-                ("wlan_user_ipv6", "2001::1"),
+                ("wlan_user_ipv6", ""),
                 ("wlan_user_mac", "AABBCCDDEEFF"),
+                ("terminal_type", "1"),
+                ("lang", "zh-cn"),
+                ("jsVersion", "4.2"),
             ],
         )
         ethernet = calls[3]
@@ -279,11 +362,63 @@ class TestAuthClientParsing:
                 ("wlan_ac_ip", "10.0.0.1"),
                 ("wlan_ac_name", "GUET-AC"),
                 ("wlan_user_ip", "10.1.2.3"),
-                ("wlan_user_ipv6", "2001::1"),
                 ("wlan_user_mac", "AABBCCDDEEFF"),
                 ("0MKKey", "123456"),
             ],
         )
+        client.close()
+
+    def test_delayed_online_state_overrides_legacy_failure_response(self):
+        """The GUET gateway can authenticate before returning a success code."""
+        client = AuthClient(
+            portal_url="http://10.0.1.5/",
+            max_retries=1,
+            retry_delay=0,
+        )
+        requested_urls = []
+        online_session = parse_portal_page(ONLINE_PAGE, client.portal_url)
+
+        class Response:
+            status_code = 200
+            headers = {}
+            is_redirect = False
+
+            def __init__(self, text=""):
+                self.text = text
+
+            def raise_for_status(self):
+                pass
+
+        class FakeClient:
+            def __init__(self, **kwargs):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                pass
+
+            def get(self, url, params=None, timeout=None):
+                requested_urls.append(url)
+                if url == "http://1.1.1.1":
+                    return Response()
+                if url == "http://119.29.29.29":
+                    return Response()
+                if url == client.portal_url:
+                    return Response(LOGIN_PAGE)
+                if url.endswith("/eportal/portal/login"):
+                    return Response('dr1003({"result":0,"msg":"1"})')
+                raise AssertionError(f"unexpected URL: {url}")
+
+        client._login_client_factory = FakeClient
+        client._wait_until_online = lambda *args, **kwargs: online_session
+
+        result = client.login("20240001", "secret", "5")
+
+        assert result.success is True
+        assert result.portal_session == online_session
+        assert not any(url.endswith("/drcom/login") for url in requested_urls)
         client.close()
 
     def test_endpoint_success_is_not_success_until_portal_is_online(

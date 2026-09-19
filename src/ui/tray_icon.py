@@ -7,18 +7,20 @@ to common actions.
 from __future__ import annotations
 
 import logging
+import sys
 
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QAction, QIcon, QGuiApplication
 from PySide6.QtWidgets import QMenu, QSystemTrayIcon
 
 from src.core.monitor import NetworkStatus
+from src.core.network_speed import NetworkSpeed, format_bytes_per_second
 from src.core.portal import PortalSession
 
 logger = logging.getLogger("guetlinker.ui.tray")
 
 
-class TrayIcon(QSystemTrayIcon):
+class QtTrayIcon(QSystemTrayIcon):
     """System tray icon with context menu.
 
     Signals from parent (QSystemTrayIcon):
@@ -31,6 +33,7 @@ class TrayIcon(QSystemTrayIcon):
         self._status = NetworkStatus.UNKNOWN
         self._portal_session_online = False
         self._login_in_progress = False
+        self._speed = NetworkSpeed()
         self._setup_menu()
         self._setup_connections()
 
@@ -122,6 +125,15 @@ class TrayIcon(QSystemTrayIcon):
             )
         self._update_action_states()
 
+    def update_network_speed(self, speed: NetworkSpeed) -> None:
+        """Expose live speed in the tooltip on non-macOS platforms."""
+        self._speed = speed
+        base_tooltip = self.toolTip().split(" · ↓", 1)[0]
+        self.setToolTip(
+            f"{base_tooltip} · ↓ {format_bytes_per_second(speed.download_bps)}"
+            f" · ↑ {format_bytes_per_second(speed.upload_bps)}"
+        )
+
     def set_login_in_progress(self, in_progress: bool) -> None:
         """Switch the tray connect action to a cancellation action."""
         self._login_in_progress = in_progress
@@ -192,3 +204,9 @@ class TrayIcon(QSystemTrayIcon):
             self._status == NetworkStatus.CONNECTED
             and self._portal_session_online
         )
+
+
+if sys.platform == "darwin":
+    from src.ui.macos_tray_icon import MacOSTrayIcon as TrayIcon
+else:
+    TrayIcon = QtTrayIcon

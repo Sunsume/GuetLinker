@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 
 from src.core.config import Config
 from src.core.auth_client import AuthClient, ISPInfo
+from src.ui.input_method_hint import InputMethodHint
 
 logger = logging.getLogger("guetlinker.ui.settings")
 
@@ -59,6 +60,8 @@ class SettingsPage(QWidget):
         self._password_input.setPlaceholderText("请输入校园网密码")
         self._password_input.setEchoMode(QLineEdit.EchoMode.Password)
         connection_layout.addRow("密码:", self._password_input)
+        self._password_input_hint = InputMethodHint(self._password_input)
+        connection_layout.addRow("", self._password_input_hint)
 
         self._isp_combo = QComboBox()
         self._isp_combo.setPlaceholderText("请先获取运营商列表")

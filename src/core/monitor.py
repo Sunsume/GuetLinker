@@ -15,6 +15,7 @@ import httpx
 from PySide6.QtCore import QObject, QTimer, Signal, Slot
 
 from src.core.network_addresses import find_local_ipv6
+from src.core.network_speed import NetworkSpeedSampler
 from src.core.portal import PortalPageState, PortalSession, parse_portal_page
 
 logger = logging.getLogger("guetlinker.monitor")
@@ -58,6 +59,7 @@ class NetworkMonitor(QObject):
     status_changed = Signal(object)  # NetworkStatus
     reconnect_requested = Signal()
     portal_session_changed = Signal(object)  # PortalSession
+    speed_changed = Signal(object)  # NetworkSpeed
     check_completed = Signal()
     _probe_completed = Signal(object)
 
@@ -76,6 +78,7 @@ class NetworkMonitor(QObject):
         failure_threshold: int = 2,
         timeout: float = 5.0,
         status_poll_interval_ms: int = STATUS_POLL_INTERVAL_MS,
+        speed_sample_interval_ms: int = 1000,
     ) -> None:
         super().__init__()
         self.portal_url = portal_url
@@ -83,6 +86,7 @@ class NetworkMonitor(QObject):
         self.failure_threshold = failure_threshold
         self.timeout = timeout
         self.status_poll_interval_ms = max(100, status_poll_interval_ms)
+        self.speed_sample_interval_ms = max(250, speed_sample_interval_ms)
 
         self._status = NetworkStatus.UNKNOWN
         self._portal_session = PortalSession()
@@ -99,6 +103,10 @@ class NetworkMonitor(QObject):
         self._status_timer.timeout.connect(self._on_status_timeout)
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._on_timeout)
+        self._speed_timer = QTimer(self)
+        self._speed_timer.setInterval(self.speed_sample_interval_ms)
+        self._speed_timer.timeout.connect(self._on_speed_timeout)
+        self._speed_sampler = NetworkSpeedSampler()
         self._probe_completed.connect(self._on_probe_completed)
         self._executor = ThreadPoolExecutor(
             max_workers=1,
@@ -137,6 +145,9 @@ class NetworkMonitor(QObject):
         )
         self._status_timer.start()
         self._timer.start(self.check_interval * 1000)
+        self._speed_sampler.reset()
+        self._speed_sampler.sample()
+        self._speed_timer.start()
         # Schedule an immediate non-blocking first check.
         self._schedule_probe(include_external=True, request_reconnect=True)
 
@@ -144,6 +155,7 @@ class NetworkMonitor(QObject):
         """Stop monitoring."""
         self._status_timer.stop()
         self._timer.stop()
+        self._speed_timer.stop()
         logger.info("Network monitor stopped")
 
     def set_interval(self, seconds: int) -> None:
@@ -261,6 +273,10 @@ class NetworkMonitor(QObject):
     def _on_status_timeout(self) -> None:
         """500 ms portal-session poll used for real-time UI updates."""
         self._schedule_probe(include_external=False, request_reconnect=False)
+
+    def _on_speed_timeout(self) -> None:
+        """Publish current system-wide upload and download rates."""
+        self.speed_changed.emit(self._speed_sampler.sample())
 
     def _schedule_probe(
         self,

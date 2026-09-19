@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | **English**
 
-A Windows desktop client for the Guilin University of Electronic Technology
+A desktop client (Windows & macOS) for the Guilin University of Electronic Technology
 campus network. It provides Dr.COM authentication, live connection monitoring,
 optional automatic reconnection, and access to selected account and traffic
 information from the campus self-service system.
@@ -15,7 +15,7 @@ information from the campus self-service system.
 
 | Windows | macOS | Linux |
 |---|---|---|
-| [Download Windows x64](https://github.com/Sunsume/GuetLinker/releases/download/v1.0.0/GuetLinker-Windows-x64.exe) | - | - |
+| [Download Windows x64](https://github.com/Sunsume/GuetLinker/releases/download/v1.0.0/GuetLinker-Windows-x64.exe) | [Download macOS (v1.0.0)](https://github.com/Sunsume/GuetLinker/releases/download/v1.0.0/GuetLinker-macOS.zip) | - |
 
 ## Features
 
@@ -49,7 +49,7 @@ The live result on the Status page is always the source of truth for connectivit
 
 ## Requirements
 
-- Windows 10 or Windows 11
+- Windows 10/11 or macOS 11+
 - Python 3.11+
 - A network environment that can reach the GUET campus portal
 

@@ -137,6 +137,18 @@ PORTAL_REFRESH_HEADERS = {
     "Cache-Control": "no-cache, no-store, max-age=0",
     "Pragma": "no-cache",
 }
+EPORTAL_JS_VERSION = "4.2"
+EPORTAL_TERMINAL_TYPE = "1"  # PC client, matching the portal's browser flow.
+EPORTAL_LANGUAGE = "zh-cn"
+PORTAL_SETTLE_TIMEOUT_SECONDS = 3.0
+DIAGNOSTIC_MESSAGE_LIMIT = 500
+ISP_DIAGNOSTIC_LABELS = {
+    "1": "校园网",
+    "2": "中国移动",
+    "3": "中国联通",
+    "4": "中国电信",
+    "5": "中国广电",
+}
 
 
 class AuthClient(QObject):
@@ -155,6 +167,7 @@ class AuthClient(QObject):
     page_parsed = Signal(object)  # ParsedForm
     isp_options_loaded = Signal(object)  # list[ISPInfo]
     isp_options_failed = Signal(str)
+    diagnostic_message = Signal(str)
     _login_finished = Signal(object)  # LoginResult
     _isp_refresh_finished = Signal(object)
 
@@ -239,6 +252,10 @@ class AuthClient(QObject):
         cancel = cancel_event or threading.Event()
         account = self._account_with_isp_suffix(user_id, isp_value)
         last_message = "服务器未确认登录成功"
+        self._publish_diagnostic(
+            "认证任务开始：运营商=%s，最大尝试=%d"
+            % (ISP_DIAGNOSTIC_LABELS.get(isp_value, "未知"), self.max_retries)
+        )
 
         request_timeout = min(self.timeout, 3.0)
         with self._login_client_factory(
@@ -257,13 +274,21 @@ class AuthClient(QObject):
             # WLAN redirect parameters do not change during one login job.
             # Discover them once instead of paying the timeout on every retry.
             context = self._discover_redirect_context(client)
+            self._publish_diagnostic(
+                "认证上下文：已获取字段=%s"
+                % (", ".join(sorted(context)) if context else "无")
+            )
             for attempt in range(1, self.max_retries + 1):
                 if cancel.is_set():
                     return LoginResult(False, "登录已取消", cancelled=True)
 
                 logger.info("GUET login attempt %d/%d", attempt, self.max_retries)
+                self._publish_diagnostic(
+                    f"开始第 {attempt}/{self.max_retries} 次认证"
+                )
                 verified_session = self._verify_online(client, timeout=0.4)
                 if verified_session:
+                    self._publish_diagnostic("认证前检查：门户已经在线")
                     return LoginResult(
                         True,
                         "登录成功",
@@ -284,11 +309,12 @@ class AuthClient(QObject):
                 )
                 last_message = wireless_result.message or last_message
                 verified_session = (
-                    self._wait_until_online(client, cancel)
-                    if wireless_result.success
+                    self._wait_until_online(client, cancel, stage="无线接口")
+                    if wireless_result.response_text
                     else None
                 )
                 if verified_session:
+                    self._publish_diagnostic("认证完成：无线接口后门户已在线")
                     return LoginResult(
                         True,
                         "登录成功",
@@ -318,11 +344,12 @@ class AuthClient(QObject):
                 )
                 last_message = ethernet_result.message or last_message
                 verified_session = (
-                    self._wait_until_online(client, cancel)
-                    if ethernet_result.success
+                    self._wait_until_online(client, cancel, stage="有线接口")
+                    if ethernet_result.response_text
                     else None
                 )
                 if verified_session:
+                    self._publish_diagnostic("认证完成：有线接口后门户已在线")
                     return LoginResult(
                         True,
                         "登录成功",
@@ -344,6 +371,16 @@ class AuthClient(QObject):
                 if attempt < self.max_retries and cancel.wait(self.retry_delay):
                     return LoginResult(False, "登录已取消", cancelled=True)
 
+        self._publish_diagnostic(
+            "认证任务失败：%s"
+            % self._sanitize_diagnostic_text(
+                last_message,
+                account,
+                password,
+                self._encode_portal_password(password),
+                base64.b64encode(password.encode("utf-8")).decode("ascii"),
+            )
+        )
         return LoginResult(
             False,
             f"登录失败，已重试 {self.max_retries} 次：{last_message}",
@@ -485,14 +522,23 @@ class AuthClient(QObject):
                 timeout=0.8,
             )
             response.raise_for_status()
+            result = self._check_login_result(response.text)
+            self._publish_endpoint_response(
+                "有线",
+                response.status_code,
+                result,
+                account,
+                password,
+            )
             logger.debug(
                 "Ethernet login endpoint responded in %.2fs",
                 time.monotonic() - started,
             )
-            return self._check_login_result(response.text)
+            return result
         except httpx.HTTPError as e:
-            logger.debug("Ethernet login request failed: %s", e)
-            return LoginResult(False, f"有线登录请求失败: {e}")
+            message = self._http_error_diagnostic("有线", e)
+            self._publish_diagnostic(message)
+            return LoginResult(False, message)
 
     def _request_wireless_login(
         self,
@@ -501,13 +547,19 @@ class AuthClient(QObject):
         password: str,
         context: dict[str, str],
     ) -> LoginResult:
-        encoded_password = base64.b64encode(password.encode("utf-8")).decode("ascii")
+        encoded_password = self._encode_portal_password(password)
+        request_context = dict(context)
+        # The browser always includes this field, even when IPv6 is unavailable.
+        request_context.setdefault("wlan_user_ipv6", "")
         params = [
             ("callback", "dr1003"),
             ("login_method", "1"),
             ("user_account", f",0,{account}"),
             ("user_password", encoded_password),
-            *[(key, context[key]) for key in sorted(context)],
+            *[(key, request_context[key]) for key in sorted(request_context)],
+            ("terminal_type", EPORTAL_TERMINAL_TYPE),
+            ("lang", EPORTAL_LANGUAGE),
+            ("jsVersion", EPORTAL_JS_VERSION),
         ]
         try:
             started = time.monotonic()
@@ -517,14 +569,88 @@ class AuthClient(QObject):
                 timeout=0.8,
             )
             response.raise_for_status()
+            result = self._check_login_result(response.text)
+            self._publish_endpoint_response(
+                "无线",
+                response.status_code,
+                result,
+                account,
+                password,
+                encoded_password,
+                base64.b64encode(password.encode("utf-8")).decode("ascii"),
+            )
             logger.debug(
                 "Wireless login endpoint responded in %.2fs",
                 time.monotonic() - started,
             )
-            return self._check_login_result(response.text)
+            return result
         except httpx.HTTPError as e:
-            logger.error("Wireless login request failed: %s", e)
-            return LoginResult(False, f"无线登录请求失败: {e}")
+            message = self._http_error_diagnostic("无线", e)
+            self._publish_diagnostic(message)
+            return LoginResult(False, message)
+
+    @staticmethod
+    def _encode_portal_password(password: str) -> str:
+        """Match GUET a41.js ``util.base64encode`` used by a44.js login.
+
+        The portal keeps the low byte of each JavaScript UTF-16 code unit;
+        it does not encode the string as UTF-8 first. Preserve the saved
+        password unchanged and apply this legacy conversion only on the wire.
+        """
+        portal_bytes = password.encode("utf-16-le", errors="surrogatepass")[::2]
+        return base64.b64encode(portal_bytes).decode("ascii")
+
+    def _publish_endpoint_response(
+        self,
+        label: str,
+        status_code: int,
+        result: LoginResult,
+        *secrets: str,
+    ) -> None:
+        """Log response metadata without storing credentials or request URLs."""
+        payload = self._parse_jsonp_payload(result.response_text) or {}
+        result_value = self._sanitize_diagnostic_text(
+            payload.get("result", "缺失"),
+            *secrets,
+        )
+        ret_code = self._sanitize_diagnostic_text(
+            payload.get("ret_code", "缺失"),
+            *secrets,
+        )
+        message = self._sanitize_diagnostic_text(result.message, *secrets)
+        self._publish_diagnostic(
+            f"{label}接口响应：HTTP={status_code}，result={result_value}，"
+            f"ret_code={ret_code}，接口判定={'接受' if result.success else '拒绝'}，"
+            f"msg={message or '无'}"
+        )
+
+    @staticmethod
+    def _http_error_diagnostic(label: str, error: httpx.HTTPError) -> str:
+        """Describe an HTTP failure without including its credential-bearing URL."""
+        response = getattr(error, "response", None)
+        status_code = getattr(response, "status_code", None)
+        status = f"，HTTP={status_code}" if status_code is not None else ""
+        return f"{label}接口请求异常：{type(error).__name__}{status}"
+
+    def _publish_diagnostic(self, message: str) -> None:
+        """Persist and publish one credential-free authentication event."""
+        safe_message = self._sanitize_diagnostic_text(message)
+        logger.info("AUTH_DIAG %s", safe_message)
+        self.diagnostic_message.emit(safe_message)
+
+    @staticmethod
+    def _sanitize_diagnostic_text(value: object, *secrets: str) -> str:
+        """Collapse untrusted response text and remove known secret values."""
+        text = " ".join(str(value).split())
+        expanded_secrets = set(filter(None, secrets))
+        expanded_secrets.update(
+            secret.partition("@")[0]
+            for secret in tuple(expanded_secrets)
+            if "@" in secret
+        )
+        for secret in sorted(expanded_secrets, key=len, reverse=True):
+            text = text.replace(secret, "[已隐藏]")
+        return text[:DIAGNOSTIC_MESSAGE_LIMIT]
 
     def _verify_online(
         self,
@@ -545,15 +671,28 @@ class AuthClient(QObject):
         self,
         client: httpx.Client,
         cancel: threading.Event,
+        *,
+        stage: str = "认证接口",
     ) -> PortalSession | None:
         """Poll briefly; an endpoint response alone is never login success."""
-        deadline = time.monotonic() + 1.5
+        started = time.monotonic()
+        deadline = time.monotonic() + PORTAL_SETTLE_TIMEOUT_SECONDS
+        checks = 0
         while True:
+            checks += 1
             session = self._verify_online(client)
             if session:
+                self._publish_diagnostic(
+                    "%s在线确认成功：耗时=%.2fs，检查=%d次"
+                    % (stage, time.monotonic() - started, checks)
+                )
                 return session
             remaining = deadline - time.monotonic()
             if remaining <= 0 or cancel.wait(min(0.2, remaining)):
+                self._publish_diagnostic(
+                    "%s在线确认未通过：耗时=%.2fs，检查=%d次"
+                    % (stage, time.monotonic() - started, checks)
+                )
                 return None
 
     @staticmethod
@@ -902,28 +1041,43 @@ class AuthClient(QObject):
         return f"{base}/{action}"
 
     @staticmethod
-    def _check_login_result(response_text: str) -> LoginResult:
-        """Check if the login response indicates success."""
+    def _parse_jsonp_payload(response_text: str) -> dict | None:
+        """Extract a JSON object from the Dr.COM JSONP response format."""
         jsonp_match = re.search(
             r"^[^(]*\(\s*(?P<payload>\{.*\})\s*\)\s*;?\s*$",
             response_text.strip(),
             re.DOTALL,
         )
-        if jsonp_match:
-            try:
-                payload = json.loads(jsonp_match.group("payload"))
-            except json.JSONDecodeError:
-                payload = None
-            if isinstance(payload, dict) and "result" in payload:
-                message = str(payload.get("msg") or payload.get("message") or "")
-                success = payload["result"] in (1, "1", True, "true")
-                return LoginResult(
-                    success=success,
-                    message=message or (
-                        "登录成功" if success else "服务器拒绝登录"
-                    ),
-                    response_text=response_text,
+        if not jsonp_match:
+            return None
+        try:
+            payload = json.loads(jsonp_match.group("payload"))
+        except json.JSONDecodeError:
+            return None
+        return payload if isinstance(payload, dict) else None
+
+    @staticmethod
+    def _check_login_result(response_text: str) -> LoginResult:
+        """Check if the login response indicates success."""
+        payload = AuthClient._parse_jsonp_payload(response_text)
+        if payload is not None and "result" in payload:
+            message = str(payload.get("msg") or payload.get("message") or "")
+            result_value = payload["result"]
+            success = (
+                result_value is True
+                or result_value == 1
+                or (
+                    isinstance(result_value, str)
+                    and result_value.strip().lower() in {"1", "true", "ok"}
                 )
+            )
+            return LoginResult(
+                success=success,
+                message=message or (
+                    "登录成功" if success else "服务器拒绝登录"
+                ),
+                response_text=response_text,
+            )
 
         text_lower = response_text.lower()
 

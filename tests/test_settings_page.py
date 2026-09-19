@@ -1,8 +1,15 @@
 """Tests for cached and dynamically refreshed ISP settings."""
 
+import subprocess
+import sys
+from types import SimpleNamespace
+
+import httpx
 from PySide6.QtWidgets import QMessageBox
 
-from src.core.auth_client import ISPInfo
+from src.app import GuetLinkerApp
+from src.core import config as config_module
+from src.core.auth_client import AuthClient, ISPInfo
 from src.ui.settings_page import SettingsPage
 
 
@@ -113,3 +120,71 @@ def test_save_persists_auto_reconnect_and_tray_only_notification(
     assert config.notification_method == "tray"
     assert config.user_id == "20249999"
     assert config.password == "new-secret"
+
+
+def test_changed_password_survives_save_restart_and_login(qapp, tmp_path, monkeypatch):
+    """Use real encrypted settings and capture HTTP without contacting a gateway."""
+    monkeypatch.setattr(config_module, "CONFIG_DIR", tmp_path)
+    monkeypatch.setattr(config_module, "CONFIG_FILE", tmp_path / "config.ini")
+    monkeypatch.setattr(config_module, "LOG_DIR", tmp_path / "logs")
+    config = config_module.Config()
+    config.user_id = "20240001"
+    config.password = "old-test-password"
+    config.isp = "5"
+    config.isp_options_cache = [
+        {"value": "5", "label": "中国广电", "suffix": "@glgd"},
+    ]
+    config.sync()
+
+    page = SettingsPage(config=config)
+    page._password_input.setText("päss!")
+    saved = []
+    page.settings_saved.connect(lambda: saved.append(True))
+    page._save_btn.click()
+
+    assert saved == [True]
+    assert config.password == "päss!"
+    assert "päss!" not in (tmp_path / "config.ini").read_text()
+
+    # Another process cannot see QSettings' shared in-memory cache.
+    reader = subprocess.run(
+        [
+            sys.executable, "-c",
+            "from pathlib import Path\n"
+            "import sys\n"
+            "from src.core import config as module\n"
+            "module.CONFIG_DIR = Path(sys.argv[1])\n"
+            "module.CONFIG_FILE = module.CONFIG_DIR / 'config.ini'\n"
+            "module.LOG_DIR = module.CONFIG_DIR / 'logs'\n"
+            "sys.stdout.write(module.Config().password)\n",
+            str(tmp_path),
+        ],
+        capture_output=True, text=True, check=True, timeout=10,
+    )
+    assert reader.stdout == "päss!"
+
+    requests = []
+    auth = AuthClient()
+
+    def capture(request):
+        requests.append(request)
+        return httpx.Response(200, text='dr1003({"result":1})')
+
+    def start_login(user_id, password, isp_value):
+        with httpx.Client(transport=httpx.MockTransport(capture)) as mock:
+            auth._request_wireless_login(
+                mock, auth._account_with_isp_suffix(user_id, isp_value), password, {}
+            )
+        return True
+
+    controller = GuetLinkerApp.__new__(GuetLinkerApp)
+    controller._config = config_module.Config()
+    controller._auth_client = SimpleNamespace(start_login=start_login)
+    controller._monitor = SimpleNamespace(invalidate_pending_probe=lambda: None)
+    try:
+        controller._do_login()
+        assert len(requests) == 1
+        assert requests[0].url.params["user_account"] == ",0,20240001@glgd"
+        assert requests[0].url.params["user_password"] == "cORzcyE="
+    finally:
+        auth.close()

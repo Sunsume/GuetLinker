@@ -1,6 +1,6 @@
 """UI tests for tabs, account state, and the self-service dialog."""
 
-from PySide6.QtCore import QDate
+from PySide6.QtCore import QDate, Qt
 
 from src.core.self_service_client import (
     AccountOverview,
@@ -9,6 +9,18 @@ from src.core.self_service_client import (
 )
 from src.ui.account_page import format_traffic_size
 from src.ui.main_window import MainWindow
+
+
+def test_closing_main_window_hides_it_without_quitting(qapp):
+    window = MainWindow()
+    window.show()
+    qapp.processEvents()
+
+    window.close()
+    qapp.processEvents()
+
+    assert window.isVisible() is False
+    assert window.testAttribute(Qt.WidgetAttribute.WA_QuitOnClose) is False
 
 
 def test_main_window_starts_on_tabs_with_self_service_logged_out(qapp):

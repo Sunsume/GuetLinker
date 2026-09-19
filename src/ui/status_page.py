@@ -9,13 +9,17 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
-from PySide6.QtCore import Qt, Slot
+from PySide6.QtCore import QUrl, Qt, Slot
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QListWidget, QFrame, QSizePolicy,
 )
 
+from src.core.config import LOG_DIR
+from src.core.logger import read_recent_log
 from src.core.monitor import NetworkStatus
+from src.core.network_speed import NetworkSpeed, format_bytes_per_second
 from src.core.portal import PortalSession
 
 logger = logging.getLogger("guetlinker.ui.status")
@@ -90,6 +94,20 @@ class StatusPage(QWidget):
         self._ipv6_label.setStyleSheet("font-size: 14px;")
         info_layout.addWidget(self._ipv6_label)
 
+        speed_layout = QHBoxLayout()
+        self._download_speed_label = QLabel("↓ 下载: 0 B/s")
+        self._download_speed_label.setStyleSheet(
+            "font-size: 14px; font-weight: bold; color: #1976D2;"
+        )
+        speed_layout.addWidget(self._download_speed_label)
+        self._upload_speed_label = QLabel("↑ 上传: 0 B/s")
+        self._upload_speed_label.setStyleSheet(
+            "font-size: 14px; font-weight: bold; color: #388E3C;"
+        )
+        speed_layout.addWidget(self._upload_speed_label)
+        speed_layout.addStretch()
+        info_layout.addLayout(speed_layout)
+
         self._last_check_label = QLabel("上次检测: --")
         self._last_check_label.setStyleSheet("font-size: 14px; color: #666;")
         info_layout.addWidget(self._last_check_label)
@@ -123,9 +141,23 @@ class StatusPage(QWidget):
         layout.addLayout(btn_layout)
 
         # ── Recent logs ───────────────────────────────────────────
+        log_header = QHBoxLayout()
         log_label = QLabel("最近日志")
         log_label.setStyleSheet("font-size: 14px; font-weight: bold; margin-top: 8px;")
-        layout.addWidget(log_label)
+        log_header.addWidget(log_label)
+        log_header.addStretch()
+
+        self._copy_log_btn = QPushButton("复制诊断日志")
+        self._copy_log_btn.setToolTip(
+            "复制最近 500 行日志；认证日志不会记录密码或完整请求参数"
+        )
+        self._copy_log_btn.clicked.connect(self.copy_diagnostic_log)
+        log_header.addWidget(self._copy_log_btn)
+
+        self._open_log_btn = QPushButton("打开日志目录")
+        self._open_log_btn.clicked.connect(self.open_log_directory)
+        log_header.addWidget(self._open_log_btn)
+        layout.addLayout(log_header)
 
         self._log_list = QListWidget()
         self._log_list.setMaximumHeight(200)
@@ -193,6 +225,16 @@ class StatusPage(QWidget):
         now = datetime.now().strftime("%H:%M:%S.%f")[:-3]
         self._last_check_label.setText(f"上次检测: {now}")
 
+    @Slot(object)
+    def update_network_speed(self, speed: NetworkSpeed) -> None:
+        """Display current system-wide download and upload throughput."""
+        self._download_speed_label.setText(
+            f"↓ 下载: {format_bytes_per_second(speed.download_bps)}"
+        )
+        self._upload_speed_label.setText(
+            f"↑ 上传: {format_bytes_per_second(speed.upload_bps)}"
+        )
+
     def set_login_in_progress(self, in_progress: bool) -> None:
         """Switch the connect action between login and cancellation."""
         self._login_in_progress = in_progress
@@ -205,9 +247,27 @@ class StatusPage(QWidget):
         timestamp = datetime.now().strftime("%H:%M:%S")
         self._log_list.insertItem(0, f"[{timestamp}] {message}")
 
-        # Keep only last 10 entries
-        while self._log_list.count() > 10:
+        # Retain enough authentication stages for one complete retry cycle.
+        while self._log_list.count() > 100:
             self._log_list.takeItem(self._log_list.count() - 1)
+
+    @Slot()
+    def copy_diagnostic_log(self) -> None:
+        """Copy recent file logs so a failed login can be reported directly."""
+        content = read_recent_log()
+        if not content:
+            self.add_log("暂无可复制的诊断日志")
+            return
+        QApplication.clipboard().setText(content)
+        self.add_log("诊断日志已复制到剪贴板")
+
+    @Slot()
+    def open_log_directory(self) -> None:
+        """Reveal the application's persistent log directory."""
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        opened = QDesktopServices.openUrl(QUrl.fromLocalFile(str(LOG_DIR)))
+        if not opened:
+            self.add_log(f"无法打开日志目录: {LOG_DIR}")
 
     def _update_action_buttons(self) -> None:
         """Keep actions consistent with connectivity and portal-session state."""
