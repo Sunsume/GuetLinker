@@ -31,7 +31,7 @@
 | 平台 | 架构 | 新版状态 (Tauri 2) | 下载与获取 |
 | :--- | :--- | :--- | :--- |
 | **Windows** | x64 | **已验证** | [前往 Releases 下载便携版 / 安装包](https://github.com/Sunsume/GuetLinker/releases) |
-| **macOS** | Apple Silicon / Intel | 计划中 | 适配中 |
+| **macOS** | Apple Silicon / Intel | **Legacy版已支持** | [下载 macOS (v1.0.0)](https://github.com/Sunsume/GuetLinker/releases/download/v1.0.0/GuetLinker-macOS.zip) |
 | **Linux** | x64 | 计划中 | 适配中 |
 
 <details>

@@ -31,7 +31,7 @@ The current version is thoroughly validated on Windows 10 / 11; macOS and Linux 
 | Platform | Architecture | Status (Tauri 2) | Download & Availability |
 | :--- | :--- | :--- | :--- |
 | **Windows** | x64 | **Validated** | [Visit Releases for Portable / Installer](https://github.com/Sunsume/GuetLinker/releases) |
-| **macOS** | Apple Silicon / Intel | Planned | In Progress |
+| **macOS** | Apple Silicon / Intel | **Legacy Supported** | [Download macOS (v1.0.0)](https://github.com/Sunsume/GuetLinker/releases/download/v1.0.0/GuetLinker-macOS.zip) |
 | **Linux** | x64 | Planned | In Progress |
 
 <details>
